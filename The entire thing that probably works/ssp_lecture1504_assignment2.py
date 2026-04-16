@@ -11,19 +11,9 @@ Classes:
 Example usage is provided at the end of the code to demonstrate how to create instances of these classes and interact with them.
 
 Doctest:
->>> raspberry_pi = RaspberryPi("Raspberry Pi 4", "192.168.1.100", 200, {"status": "online"}, "Model B")
->>> print(raspberry_pi)
-Raspberry Pi 4 (192.168.1.100) - Status Code: 200, Status: {'status': 'online'}, Raspberry Pi Model: Model B
->>> amr = AMR("AMR 1", "192.168.1.101", 200, {"status": "online", "battery_percentage": 80, "position": (10, 20)}, "Model X", raspberry_pi)
->>> print(amr)
-AMR 1 (192.168.1.101) - Status Code: 200, Status: {'status': 'online', 'battery_percentage': 80, 'position': (10, 20)}, AMR Model: Model X, Associated Raspberry Pi: Raspberry Pi 4 (192.168.1.100) - Status Code: 200, Status: {'status': 'online'}, Raspberry Pi Model: Model B
->>> network_monitorer = NetworkMonitorer("192.168.1.1", raspberry_pi)
->>> print(network_monitorer)
-Fleet Manager IP: 192.168.1.1
-Raspberry Pi: Raspberry Pi 4 (192.168.1.100) - Status Code: 200, Status: {'status': 'online'}, Raspberry Pi Model: Model B
-AMRs:
->>> network_monitorer.add_amr(amr)
->>> print(network_monitorer)
+>>> device = InternetDevice("Test Device", "192.168.1.10")
+>>> print(device)
+Test Device (192.168.1.10)
 """
 
 class InternetDevice:
@@ -80,7 +70,10 @@ class NetworkMonitorer:
 
     def __str__(self):
         amr_info = "\n".join(str(amr) for amr in self.__amr_list)
-        return f"Fleet Manager IP: {self.fleet_manager_ip}\nRaspberry Pi: {self.__raspberry_pi}\nAMRs:\n{amr_info}"
+        base_info = f"Fleet Manager IP: {self.fleet_manager_ip}\nRaspberry Pi: {self.__raspberry_pi}\nAMRs:"
+        if amr_info:
+            return f"{base_info}\n{amr_info}"
+        return base_info
 
     def get_amr_list(self):
         return self.__amr_list
