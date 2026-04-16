@@ -27,4 +27,7 @@ frame2.grid(column=2,row=1,**options)
 frame3.grid(column=1,row=2,**options)
 frame4.grid(column=2,row=2,**options)
 
+app.grid_rowconfigure((1,2), weight=1)
+app.grid_columnconfigure((1,2), weight=1)
+
 app.mainloop()
