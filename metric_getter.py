@@ -1,3 +1,7 @@
+#####################
+##### REDUNDANT #####
+##################### 
+
 #Terminal commands
 import subprocess
 
