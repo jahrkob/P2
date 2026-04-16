@@ -2,8 +2,7 @@ Methods to run MiR website:
  
     1 (VSCode)
         * download live server
-        * open hjemmeside folderen
-        * tryk run live server i bund højre af vscode vinduet
+        * højreklik på index.htm og vælg "open with Live Server"
 
     2 (PowerShell)
         cd "C:\Users\dit_navn\your_folder_that_contains\MiR website"
