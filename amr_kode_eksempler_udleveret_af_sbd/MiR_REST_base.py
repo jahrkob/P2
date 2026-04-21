@@ -1,6 +1,5 @@
 import requests
 import json
-import random
 import time
 
 x_coord = 0.0
