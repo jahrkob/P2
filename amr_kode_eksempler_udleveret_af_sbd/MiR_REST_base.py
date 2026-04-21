@@ -6,7 +6,7 @@ import time
 x_coord = 0.0
 y_coord = 0.0
 
-mir_ip = "http://192.168.100.2"
+mir_ip = "http://192.168.100.51" # ip address of the MiR robot, change if needed.
 
 headers = { 
     'Accept-Language': 'en-US',
