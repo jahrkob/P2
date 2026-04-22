@@ -14,10 +14,24 @@ class MiR200:
 
         if response.status_code == 200:
             data = response.json()
+
             print("Position:", data["position"])
             print("Battery %:", data["battery_percentage"])
             print("State:", data["state_text"])
             return data
+        else:
+            print(f"Error {response.status_code}: {response.text}")
+    
+    def get_map(self):
+        response = requests.get(f"{self.base_url}/map", headers=self.headers)
+
+        if response.status_code == 200:
+            map = response.json()
+            
+            print("url:", map["position"])
+            print("guid:", map["battery_percentage"])
+            print("name:", map["state_text"])
+
         else:
             print(f"Error {response.status_code}: {response.text}")
 
