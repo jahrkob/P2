@@ -6,17 +6,93 @@ from datetime import datetime
 
 import requests
 
-class NetworkMonitorer:
-    """Class to monitor the network and manage the fleet of AMRs."""
 
-    def __init__(self, fleet_manager_ip, database = "database.db", auth_token = None):
+class InternetDevice:
+    """Base class for internet-connected devices."""
+
+    def __init__(self, device_name, ip_address):
+        self.device_name = device_name
+        self.ip_address = ip_address
+
+    def __str__(self):
+        return f"{self.device_name} ({self.ip_address})"
+
+
+class AMR(InternetDevice):
+    """Autonomous Mobile Robot."""
+
+    def __init__(self, amr_id, ip, name, raspi_ip, auth_token=None, api_version="v2.0.0"):
+        super().__init__(name, ip)
+        self.amr_id = amr_id
+        self.ip = ip
+        self.name = name
+        self.raspi_ip = raspi_ip
+        self.auth_token = auth_token
+        self.api_version = api_version
+
+        self.status_code = None
+        self.status = {}
+
+    def __str__(self):
+        battery = self.get_battery_percentage()
+        state = self.get_state_text()
+        mode = self.get_mode_text()
+        return (
+            f"{self.name} ({self.ip}) - "
+            f"RasPi IP: {self.raspi_ip}, "
+            f"Battery: {battery}, State: {state}, Mode: {mode}"
+        )
+
+    def update_status(self):
+        """Fetch live status from the AMR API."""
+        headers = {
+            "accept": "application/json",
+            "Accept-Language": "en_US"
+        }
+
+        if self.auth_token:
+            headers["Authorization"] = f"Basic {self.auth_token}"
+
+        url = f"http://{self.ip}/api/{self.api_version}/status"
+        response = requests.get(url, headers=headers, timeout=5)
+
+        self.status_code = response.status_code
+        response.raise_for_status()
+        self.status = response.json()
+
+    def get_battery_percentage(self):
+        return self.status.get("battery_percentage")
+
+    def get_position(self):
+        return self.status.get("position", {})
+
+    def get_pos_x(self):
+        return self.get_position().get("x")
+
+    def get_pos_y(self):
+        return self.get_position().get("y")
+
+    def get_state_text(self):
+        return self.status.get("state_text")
+
+    def get_mode_text(self):
+        return self.status.get("mode_text")
+
+    def get_errors(self):
+        return self.status.get("errors", [])
+
+
+class NetworkMonitorer:
+    """Monitor and manage AMRs using SQLite + live API polling."""
+
+    def __init__(self, fleet_manager_ip, database="database.db", auth_token=None):
         self.fleet_manager_ip = fleet_manager_ip
-        self.databbase = database
+        self.database = database
         self.auth_token = auth_token
         self.amr_list = []
 
         self.initialize_database()
-        self.load_devices_from_database()
+        self.load_amrs_from_database()
 
     def __str__(self):
         amr_info = "\n".join(str(amr) for amr in self.amr_list)
@@ -25,19 +101,102 @@ class NetworkMonitorer:
             f"AMRs:\n{amr_info if amr_info else 'Ingen AMR fundet'}"
         )
 
-    def load_amrs_from_database(self):
-        conn = sqlite3.connect("test_database.db")
+    def initialize_database(self):
+        """Create tables if they do not already exist."""
+        conn = sqlite3.connect(self.database)
         cursor = conn.cursor()
 
-        cursor.execute("SELECT * FROM amr")
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS amr (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ip VARCHAR(39) NOT NULL,
+                name VARCHAR(80),
+                raspi_ip VARCHAR(80)
+            )
+        """)
 
-        self.amr_list = cursor.fetchall()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS data (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                amr_id INTEGER NOT NULL,
+                timestamp DATETIME NOT NULL,
+                rtt FLOAT,
+                jitter FLOAT,
+                packet_loss FLOAT,
+                signal_strength FLOAT,
+                noise FLOAT,
+                rssi FLOAT,
+                battery FLOAT,
+                pos_x FLOAT,
+                pos_y FLOAT,
+                FOREIGN KEY (amr_id) REFERENCES amr(id)
+            )
+        """)
 
-    def add_amr_to_database(self, amr):
-        pass
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS "error" (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                amr_id INTEGER NOT NULL,
+                timestamp DATETIME NOT NULL,
+                error TEXT NOT NULL,
+                error_desc TEXT,
+                FOREIGN KEY (amr_id) REFERENCES amr(id)
+            )
+        """)
 
-    def remove_amr_from_database(self, amr):
-        pass
+        conn.commit()
+        conn.close()
+
+    def load_amrs_from_database(self):
+        """Load all AMRs from database."""
+        self.amr_list = []
+
+        conn = sqlite3.connect(self.database)
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT id, ip, name, raspi_ip
+            FROM amr
+        """)
+
+        rows = cursor.fetchall()
+        conn.close()
+
+        for row in rows:
+            amr = AMR(
+                amr_id=row[0],
+                ip=row[1],
+                name=row[2],
+                raspi_ip=row[3],
+                auth_token=self.auth_token
+            )
+            self.amr_list.append(amr)
+
+    def add_amr_to_database(self, ip, name, raspi_ip):
+        """Add a new AMR to database."""
+        conn = sqlite3.connect(self.database)
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO amr (ip, name, raspi_ip)
+            VALUES (?, ?, ?)
+        """, (ip, name, raspi_ip))
+
+        conn.commit()
+        conn.close()
+
+        self.load_amrs_from_database()
+
+    def remove_amr_from_database(self, amr_id):
+        """Remove an AMR from database."""
+        conn = sqlite3.connect(self.database)
+        cursor = conn.cursor()
+
+        cursor.execute("DELETE FROM amr WHERE id = ?", (amr_id,))
+        conn.commit()
+        conn.close()
+
+        self.load_amrs_from_database()
 
     def save_data_row(
         self,
@@ -54,7 +213,7 @@ class NetworkMonitorer:
         pos_y
     ):
         """Save one monitoring row to data table."""
-        conn = sqlite3.connect(self.databbase)
+        conn = sqlite3.connect(self.database)
         cursor = conn.cursor()
 
         cursor.execute("""
@@ -72,15 +231,57 @@ class NetworkMonitorer:
         conn.close()
 
     def save_error(self, amr_id, error_name, error_desc):
-        pass
+        """Save one error row to error table."""
+        conn = sqlite3.connect(self.database)
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO "error" (amr_id, timestamp, error, error_desc)
+            VALUES (?, ?, ?, ?)
+        """, (
+            amr_id,
+            datetime.now().isoformat(),
+            error_name,
+            error_desc
+        ))
+
+        conn.commit()
+        conn.close()
 
     def clear_errors_for_amr(self, amr_id):
-        pass
+        """Optional: remove old errors for one AMR."""
+        conn = sqlite3.connect(self.database)
+        cursor = conn.cursor()
+
+        cursor.execute('DELETE FROM "error" WHERE amr_id = ?', (amr_id,))
+
+        conn.commit()
+        conn.close()
 
     def save_api_errors(self, amr):
-        pass
+        """Save API errors from AMR status JSON."""
+        errors = amr.get_errors()
+
+        self.clear_errors_for_amr(amr.amr_id)
+
+        if not errors:
+            return
+
+        for err in errors:
+            if isinstance(err, dict):
+                error_name = str(err.get("code", err.get("error", "API_ERROR")))
+                error_desc = str(err.get("description", err.get("message", json.dumps(err))))
+            else:
+                error_name = "API_ERROR"
+                error_desc = str(err)
+
+            self.save_error(amr.amr_id, error_name, error_desc)
 
     def measure_network_metrics(self, amr):
+        """
+        Measure RTT, jitter and packet loss using ping.
+        Works on typical Linux ping output.
+        """
         try:
             result = subprocess.run(
                 ["ping", "-c", "4", amr.ip],
@@ -127,6 +328,9 @@ class NetworkMonitorer:
             return 0.0, 0.0, 100.0
 
     def get_raspi_metrics(self, amr):
+        """
+        HOW?
+        """
         pass
 
     def monitor_one_amr(self, amr):
@@ -187,5 +391,51 @@ class NetworkMonitorer:
             f"RSSI: {rssi}"
         )
 
-    def active_monitoring(self):
-        pass
+    def active_monitoring(self, interval_seconds=5, max_cycles=None, reload_from_database=True):
+        """
+        Run monitoring in a loop.
+
+        reload_from_database=True means new AMRs added to DB
+        are automatically included next cycle.
+        """
+        cycle = 0
+
+        while True:
+            print(f"\n--- Ny monitoreringscyklus {cycle + 1} | {datetime.now().isoformat()} ---")
+
+            if reload_from_database:
+                self.load_amrs_from_database()
+
+            for amr in self.amr_list:
+                self.monitor_one_amr(amr)
+
+            cycle += 1
+            if max_cycles is not None and cycle >= max_cycles:
+                print("Monitorering stoppet.")
+                break
+
+            time.sleep(interval_seconds)
+
+
+if __name__ == "__main__":
+    monitor = NetworkMonitorer(
+        fleet_manager_ip="192.168.1.1",
+        database="database.db",
+        auth_token="DIN_BASIC_AUTH_TOKEN"
+    )
+
+    # Eksempel:
+    # monitor.add_amr_to_database(
+    #     ip="192.168.1.51",
+    #     name="AMR #1",
+    #     raspi_ip="192.168.1.101"
+    # )
+
+    print(monitor)
+
+    # Én enkelt runde
+    for amr in monitor.amr_list:
+        monitor.monitor_one_amr(amr)
+
+    # Kontinuerlig monitorering
+    # monitor.active_monitoring(interval_seconds=5)
