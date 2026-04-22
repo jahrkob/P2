@@ -1,23 +1,20 @@
 """
-This code defines classes to represent internet-connected devices, specifically Autonomous Mobile Robots (AMRs) and Raspberry Pi devices. It also includes a NetworkMonitorer class to manage the fleet of AMRs and a DataGrapher class to handle data visualization.
+Monitor AMRs and Raspberry Pi devices using real HTTP APIs.
 
 Classes:
-- InternetDevice: A base class for all internet-connected devices.
-- AMR: A class representing Autonomous Mobile Robots.
-- RaspberryPi: A class representing Raspberry Pi devices.
-- NetworkMonitorer: A class to monitor the network and manage the fleet of AMRs.
-- DataGrapher: A class to graph the data collected from the AMRs and Raspberry Pi.
-
-Example usage is provided at the end of the code to demonstrate how to create instances of these classes and interact with them.
-
-Doctest:
->>> device = InternetDevice("Test Device", "192.168.1.10")
->>> print(device)
-Test Device (192.168.1.10)
+- InternetDevice
+- AMR
+- RaspberryPi
+- NetworkMonitorer
+- DataGrapher
 """
+
+import sqlite3
+import requests
 
 class InternetDevice:
     """Base class for all internet-connected devices."""
+
     def __init__(self, device_name, ip_address):
         self.device_name = device_name
         self.ip_address = ip_address
@@ -27,6 +24,7 @@ class InternetDevice:
     
 class AMR(InternetDevice):
     """Autonomous Mobile Robot (AMR) class inheriting from InternetDevice."""
+
     def __init__(self, device_name, ip_address, status_code, status, amr_model, associated_raspberry_pi):
         super().__init__(device_name, ip_address)
         self.__status_code = status_code
@@ -48,6 +46,7 @@ class AMR(InternetDevice):
 
 class RaspberryPi(InternetDevice):
     """Raspberry Pi class inheriting from InternetDevice."""
+
     def __init__(self, device_name, ip_address, status_code, status, raspberry_pi_model):
         super().__init__(device_name, ip_address)
         self.__status_code = status_code
@@ -63,35 +62,139 @@ class RaspberryPi(InternetDevice):
     
 class NetworkMonitorer:
     """Class to monitor the network and manage the fleet of AMRs."""
-    def __init__(self, fleet_manager_ip, raspberry_pi):
-        self.__amr_list = []
-        self.__raspberry_pi = raspberry_pi
+
+    def __init__(self, fleet_manager_ip, database = "database.db"):
         self.fleet_manager_ip = fleet_manager_ip
+        self.databbase = database
+        self.amr_list = []
+        self.raspberry_pi = []
+
+        self.initialize_database()
+        self.load_devices_from_database()
 
     def __str__(self):
-        amr_info = "\n".join(str(amr) for amr in self.__amr_list)
-        base_info = f"Fleet Manager IP: {self.fleet_manager_ip}\nRaspberry Pi: {self.__raspberry_pi}\nAMRs:"
-        if amr_info:
-            return f"{base_info}\n{amr_info}"
-        return base_info
+        pi_info = "\n".join(str(pi) for pi in self.raspberry_pi_list)
+        amr_info = "\n".join(str(amr) for amr in self.amr_list)
 
-    def get_amr_list(self):
-        return self.__amr_list
+        return (
+            f"Fleet Manager IP: {self.fleet_manager_ip}\n\n"
+            f"Raspberry Pis:\n{pi_info if pi_info else 'Ingen Raspberry Pi fundet'}\n\n"
+            f"AMRs:\n{amr_info if amr_info else 'Ingen AMR fundet'}"
+        )
 
-    def add_amr(self, amr):
-        self.__amr_list.append(amr)
+    def initialize_database(self):
+        conn = sqlite3.connect(self.databbase)
+        cursor = conn.cursor()
 
-    def remove_amr(self, amr):
-        if amr in self.__amr_list:
-            self.__amr_list.remove(amr)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS raspberry_pis (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                device_name TEXT NOT NULL,
+                ip_address TEXT NOT NULL UNIQUE,
+                raspberry_pi_model TEXT,
+                metrics_url TEXT
+            )
+        """)
 
-    def get_wifi_metrics(self):
-        """Simulate retrieval of Wi-Fi metrics such as RSSI."""
-        # In a real implementation, this would involve network calls to the Raspberry Pi
-        # For simulation purposes, we will just return a random RSSI value
-        import random
-        rssi_value = random.randint(-100, -30)  # Simulated RSSI value in dBm
-        self.__raspberry_pi._RaspberryPi__rssi = rssi_value  # Update the Raspberry Pi's RSSI value
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS amrs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                device_name TEXT NOT NULL,
+                ip_address TEXT NOT NULL UNIQUE,
+                amr_model TEXT,
+                api_version TEXT DEFAULT 'v2.0.0',
+                auth_token TEXT,
+                raspberry_pi_id INTEGER,
+                FOREIGN KEY (raspberry_pi_id) REFERENCES raspberry_pis(id)
+            )
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS amr_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                amr_id INTEGER NOT NULL,
+                timestamp TEXT NOT NULL,
+                battery_percentage REAL,
+                x REAL,
+                y REAL,
+                orientation REAL,
+                linear_velocity REAL,
+                angular_velocity REAL,
+                state_text TEXT,
+                mode_text TEXT,
+                raw_status TEXT,
+                FOREIGN KEY (amr_id) REFERENCES amrs(id)
+            )
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS pi_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                raspberry_pi_id INTEGER NOT NULL,
+                timestamp TEXT NOT NULL,
+                rssi INTEGER,
+                raw_status TEXT,
+                FOREIGN KEY (raspberry_pi_id) REFERENCES raspberry_pis(id)
+            )
+        """)
+
+        conn.commit()
+        conn.close()
+    
+    def load_devices_from_database(self):
+        pass
+
+    def add_raspberry_pi_to_database(self, raspberry_pi):
+        pass
+
+    def add_amr_to_database(self, amr):
+        pass
+
+    def remove_amr_from_database(self, amr):
+        pass
+
+    def remove_raspberry_pi_from_database(self, raspberry_pi):
+        pass
+
+    def save_amr_log(self, amr):
+        pass
+
+    def save_pi_log(self, raspberry_pi):
+        pass
+
+    def poll_all_amrs(self):
+        pass
+
+    def poll_all_raspberry_pis(self):
+        pass
+
+    def active_monitoring(self):
+        pass
+
+
+    # gammelt:
+    # def __str__(self):
+    #     amr_info = "\n".join(str(amr) for amr in self.__amr_list)
+    #     base_info = f"Fleet Manager IP: {self.fleet_manager_ip}\nRaspberry Pi: {self.__raspberry_pi}\nAMRs:"
+    #     if amr_info:
+    #         return f"{base_info}\n{amr_info}"
+    #     return base_info
+
+    # def get_amr_list(self):
+    #     return self.__amr_list
+
+    # def add_amr(self, amr):
+    #     self.__amr_list.append(amr)
+
+    # def remove_amr(self, amr):
+    #     if amr in self.__amr_list:
+    #         self.__amr_list.remove(amr)
+
+    # def get_wifi_metrics(self):
+    #     pass
+
+    # def active_monitoring(self):
+    #     pass
 
 class DataGrapher:
     """Class to graph the data collected from the AMRs and Raspberry Pi."""
@@ -112,12 +215,12 @@ if __name__ == "__main__":
 
     # Create instances and demonstrate functionality
     raspberry_pi = RaspberryPi("Raspberry Pi 4", "192.168.1.100", 200, {"status": "online"}, "Model B")
-    amr = AMR("AMR 1", "192.168.1.101", 200, {"status": "online", "battery_percentage": 80, "position": (10, 20)}, "Model X", raspberry_pi)
+    amr_1 = AMR("AMR 1", "192.168.0.100", 200, {"status": "online", "battery_percentage": 80, "position": (10, 20)}, "Model X", raspberry_pi)
     network_monitorer = NetworkMonitorer("192.168.1.1", raspberry_pi)
-    network_monitorer.add_amr(amr)
+    network_monitorer.add_amr(amr_1)
     print(network_monitorer)
-    network_monitorer.get_wifi_metrics()
-    print(f"Updated RSSI: {raspberry_pi.get_rssi()} dBm")
-    data_grapher = DataGrapher()
-    data_grapher.add_data({"timestamp": "2024-06-01 12:00:00", "battery_percentage": 80, "position": (10, 20), "rssi": raspberry_pi.get_rssi()})
-    data_grapher.display_data()
+    # network_monitorer.get_wifi_metrics()
+    # print(f"Updated RSSI: {raspberry_pi.get_rssi()} dBm")
+    # data_grapher = DataGrapher()
+    # data_grapher.add_data({"timestamp": "2024-06-01 12:00:00", "battery_percentage": 80, "position": (10, 20), "rssi": raspberry_pi.get_rssi()})
+    # data_grapher.display_data()
