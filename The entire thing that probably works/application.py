@@ -83,78 +83,7 @@ class NetworkMonitorer:
             f"AMRs:\n{amr_info if amr_info else 'Ingen AMR fundet'}"
         )
 
-    def initialize_database(self):
-        """Create the database tables if they do not exist."""
-        conn = sqlite3.connect(self.databbase)
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS raspberry_pis (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                device_name TEXT NOT NULL,
-                ip_address TEXT NOT NULL UNIQUE,
-                raspberry_pi_model TEXT,
-                metrics_url TEXT
-            )
-        """)
-
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS amrs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                device_name TEXT NOT NULL,
-                ip_address TEXT NOT NULL UNIQUE,
-                amr_model TEXT,
-                api_version TEXT DEFAULT 'v2.0.0',
-                auth_token TEXT,
-                raspberry_pi_id INTEGER,
-                FOREIGN KEY (raspberry_pi_id) REFERENCES raspberry_pis(id)
-            )
-        """)
-
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS amr (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ip VARCHAR(35) NOT NULL,
-                name VARCHAR(80) NOT NULL,
-                associated_raspberry VARCHAR(80)
-            )
-        """)
-
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS data (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                amr_id INTEGER NOT NULL,
-                rtt FLOAT,
-                jitter FLOAT,
-                packet_loss FLOAT,
-                FOREIGN KEY (amr_id) REFERENCES amr(id)
-            )
-        """)
-
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS amr_status_log (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                amr_id INTEGER NOT NULL,
-                timestamp TEXT NOT NULL,
-                battery_percentage FLOAT,
-                battery_time_remaining INTEGER,
-                x FLOAT,
-                y FLOAT,
-                orientation FLOAT,
-                linear_velocity FLOAT,
-                angular_velocity FLOAT,
-                state_text VARCHAR(100),
-                mode_text VARCHAR(100),
-                errors TEXT,
-                raw_status TEXT,
-                FOREIGN KEY (amr_id) REFERENCES amr(id)
-            )
-        """)
-
-        conn.commit()
-        conn.close()
-    
-    def load_devices_from_database(self):
+    def load_amr_database(self):
         conn = sqlite3.connect("test_database.db")
         cursor = conn.cursor()
 
