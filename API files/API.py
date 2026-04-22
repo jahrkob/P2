@@ -4,21 +4,14 @@ from flask_restful import Resource, Api, reqparse, fields, marshal_with, abort
 import sqlalchemy as sql
 from datetime import datetime
 
-
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 db = SQLAlchemy(app)
 api = Api(app)
 
-# class UserModel(db.Model):
-#     # make sure the json POST and Get requests match the capitalization of these variables
-#     id = db.Column(db.Integer, primary_key=True)
-#     name = db.Column(db.String(80), unique=True, nullable=False)
-#     email = db.Column(db.String(80), unique=True, nullable=False)
-
-
-#     def __repr__(self):
-#         return f"User(id = {self.id}, name = {self.name}, email = {self.email})"
+###############################################################################################################
+########################## Defining tables(classes), their columns and relationships ##########################
+###############################################################################################################
 
 class Data(db.Model):
     __tablename__ = 'data'
@@ -45,7 +38,7 @@ class AMR(db.Model):
     name = sql.Column(sql.String(80), nullable=True) #name is optional
     data = db.relationship('data',back_populates='amr')
     error = db.relationship('error',back_populates='amr')
-    associated_raspberry_pi = sql.Column(sql.String(80), unique=True, nullable=False)
+    raspi_ip = sql.Column(sql.String(80), unique=True, nullable=False)
 
     def __repr__(self):
         return f'[{id}]: name="{self.name}", ip={self.ip}, raspberry_pi={self.associated_raspberry_pi}'
@@ -60,11 +53,45 @@ class Error(db.Model):
     error_desc = sql.Column(sql.Text)
 
 
+###############################################################################################################
+################################################### REQUESTS ##################################################
+###############################################################################################################
 
 
-# user_args = reqparse.RequestParser()
-# user_args.add_argument('name', type=str, required=True, help='Name cannot be blank') # if this isnt fulfilled we return 400 (bad request)
-# user_args.add_argument('email', type=str, required=True, help='Email cannot be blank') # if this isnt fulfilled we return 400 (bad request)
+user_args = reqparse.RequestParser()
+user_args.add_argument('table', type=str, required=True, help='table cannot be blank') # if this isnt fulfilled we return 400 (bad request)
+user_args.add_argument('amr_id', type=int, help='id must be integer') # if this isnt fulfilled we return 400 (bad request)
+
+
+#The format in which the API responses will be given
+amrFields = { # for requesting which AMR's there are
+    'id':fields.Integer,
+    'ip':fields.String,
+    'name':fields.String,
+    'raspi_ip':fields.String
+}
+
+dataFields = { # for requesting data from a specific AMR
+    'id':fields.Integer,
+    'amr_id':fields.String,
+    'timestamp':fields.DateTime,
+    'rtt':fields.Float,
+    'jitter':fields.Float,
+    'packet_loss':fields.Float,
+    'signal_strength':fields.Float,
+    'noise':fields.Float,
+    'rssi':fields.Float,
+    'battery':fields.Float,
+    'pos_x':fields.Float,
+    'pos_y':fields.Float,
+}
+
+# krævet for at specificere et datetime object i felter (dataFields)
+class DateTime(fields.Raw):
+    def format(self,value):
+        if value is None:
+            return None
+        return value.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 
 # userFields = {
 #     'id':fields.Integer,
