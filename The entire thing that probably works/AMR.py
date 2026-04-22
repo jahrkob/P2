@@ -21,7 +21,4 @@ class MiR200:
         else:
             print(f"Error {response.status_code}: {response.text}")
 
-
-# Usage
-robot = MiR200()
-robot.get_status()
+MiR200.get_status()
