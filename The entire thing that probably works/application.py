@@ -83,7 +83,7 @@ class NetworkMonitorer:
             f"AMRs:\n{amr_info if amr_info else 'Ingen AMR fundet'}"
         )
 
-    def load_amr_database(self):
+    def load_amrs_from_database(self):
         conn = sqlite3.connect("test_database.db")
         cursor = conn.cursor()
 
