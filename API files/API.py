@@ -25,7 +25,7 @@ class Data(db.Model):
     id = sql.Column(sql.Integer, primary_key=True)
     amr_id = sql.Column(sql.Integer,sql.ForeignKey('amr.id'), nullable=False)
     amr = db.relationship('amr', back_populates='data')
-    timestamp = sql.Column(sql.DateTime, default=datetime.now)
+    timestamp = sql.Column(sql.DateTime, default=datetime.now, nullable=False)
     rtt = sql.Column(sql.Float)
     jitter = sql.Column(sql.Float)
     packet_loss = sql.Column(sql.Float)
@@ -55,6 +55,7 @@ class Error(db.Model):
     id = sql.Column(sql.Integer, primary_key=True)
     amr_id = sql.Column(sql.Integer,sql.ForeignKey('amr.id'), nullable=False)
     amr = db.relationship('error', back_populates='data')
+    timestamp = sql.Column(sql.DateTime, default=datetime.now, nullable=False)
     error = sql.Column(sql.Text, nullable=False)
     error_desc = sql.Column(sql.Text)
 
