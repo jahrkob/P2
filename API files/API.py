@@ -41,7 +41,7 @@ class AMR(db.Model):
     raspi_ip = sql.Column(sql.String(80), unique=True, nullable=False)
 
     def __repr__(self):
-        return f'[{id}]: name="{self.name}", ip={self.ip}, raspberry_pi={self.associated_raspberry_pi}'
+        return f'[{id}]: name="{self.name}", ip={self.ip}, raspberry_pi={self.raspi_ip}'
 
 class Error(db.Model):
     __tablename__ = 'error'
