@@ -69,7 +69,7 @@ class NetworkMonitorer:
 
     def __init__(self, fleet_manager_ip, database = "database.db", auth_token = None):
         self.fleet_manager_ip = fleet_manager_ip
-        self.databbase = database
+        self.database = database
         self.auth_token = auth_token
         self.amr_list = []
 
@@ -90,6 +90,9 @@ class NetworkMonitorer:
         cursor.execute("SELECT * FROM amr")
 
         self.amr_list = cursor.fetchall()
+
+        conn.commit()
+        conn.close()
 
     def add_amr_to_database(self, amr):
         pass
