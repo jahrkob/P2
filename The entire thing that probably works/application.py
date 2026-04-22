@@ -10,6 +10,10 @@ Classes:
 """
 
 import sqlite3
+import json
+import time
+from datetime import datetime
+
 import requests
 
 class InternetDevice:
@@ -63,26 +67,24 @@ class RaspberryPi(InternetDevice):
 class NetworkMonitorer:
     """Class to monitor the network and manage the fleet of AMRs."""
 
-    def __init__(self, fleet_manager_ip, database = "database.db"):
+    def __init__(self, fleet_manager_ip, database = "database.db", auth_token = None):
         self.fleet_manager_ip = fleet_manager_ip
         self.databbase = database
+        self.auth_token = auth_token
         self.amr_list = []
-        self.raspberry_pi = []
 
         self.initialize_database()
         self.load_devices_from_database()
 
     def __str__(self):
-        pi_info = "\n".join(str(pi) for pi in self.raspberry_pi_list)
         amr_info = "\n".join(str(amr) for amr in self.amr_list)
-
         return (
             f"Fleet Manager IP: {self.fleet_manager_ip}\n\n"
-            f"Raspberry Pis:\n{pi_info if pi_info else 'Ingen Raspberry Pi fundet'}\n\n"
             f"AMRs:\n{amr_info if amr_info else 'Ingen AMR fundet'}"
         )
 
     def initialize_database(self):
+        """Create the database tables if they do not exist."""
         conn = sqlite3.connect(self.databbase)
         cursor = conn.cursor()
 
@@ -110,31 +112,42 @@ class NetworkMonitorer:
         """)
 
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS amr_logs (
+            CREATE TABLE IF NOT EXISTS amr (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                amr_id INTEGER NOT NULL,
-                timestamp TEXT NOT NULL,
-                battery_percentage REAL,
-                x REAL,
-                y REAL,
-                orientation REAL,
-                linear_velocity REAL,
-                angular_velocity REAL,
-                state_text TEXT,
-                mode_text TEXT,
-                raw_status TEXT,
-                FOREIGN KEY (amr_id) REFERENCES amrs(id)
+                ip VARCHAR(35) NOT NULL,
+                name VARCHAR(80) NOT NULL,
+                associated_raspberry VARCHAR(80)
             )
         """)
 
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS pi_logs (
+            CREATE TABLE IF NOT EXISTS data (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                raspberry_pi_id INTEGER NOT NULL,
+                amr_id INTEGER NOT NULL,
+                rtt FLOAT,
+                jitter FLOAT,
+                packet_loss FLOAT,
+                FOREIGN KEY (amr_id) REFERENCES amr(id)
+            )
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS amr_status_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                amr_id INTEGER NOT NULL,
                 timestamp TEXT NOT NULL,
-                rssi INTEGER,
+                battery_percentage FLOAT,
+                battery_time_remaining INTEGER,
+                x FLOAT,
+                y FLOAT,
+                orientation FLOAT,
+                linear_velocity FLOAT,
+                angular_velocity FLOAT,
+                state_text VARCHAR(100),
+                mode_text VARCHAR(100),
+                errors TEXT,
                 raw_status TEXT,
-                FOREIGN KEY (raspberry_pi_id) REFERENCES raspberry_pis(id)
+                FOREIGN KEY (amr_id) REFERENCES amr(id)
             )
         """)
 
@@ -142,10 +155,9 @@ class NetworkMonitorer:
         conn.close()
     
     def load_devices_from_database(self):
-        pass
-
-    def add_raspberry_pi_to_database(self, raspberry_pi):
-        pass
+        """Load Raspberry Pis and AMRs from the database."""
+        self.amr_list = []
+        self.raspberry_pi_list = []
 
     def add_amr_to_database(self, amr):
         pass
@@ -153,19 +165,19 @@ class NetworkMonitorer:
     def remove_amr_from_database(self, amr):
         pass
 
-    def remove_raspberry_pi_from_database(self, raspberry_pi):
+    def save_network_data(self):
         pass
 
-    def save_amr_log(self, amr):
+    def save_amr_status_log(self):
         pass
 
-    def save_pi_log(self, raspberry_pi):
+    def measure_network_metrics(self):
         pass
 
     def poll_all_amrs(self):
         pass
 
-    def poll_all_raspberry_pis(self):
+    def monitor_network_data(self):
         pass
 
     def active_monitoring(self):
