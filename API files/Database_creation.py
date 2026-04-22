@@ -3,4 +3,5 @@
 from API import app,db
 
 with app.app_context():
-    db.create_all()
+    db.drop_all() # remove current tables in database.db
+    db.create_all() # create new tables in database.db
