@@ -84,7 +84,92 @@ class NetworkMonitorer:
 
     def initialize_database(self):
         conn = sqlite3.connect(self.databbase)
-        #tilføj her
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS raspberry_pis (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                device_name TEXT NOT NULL,
+                ip_address TEXT NOT NULL UNIQUE,
+                raspberry_pi_model TEXT,
+                metrics_url TEXT
+            )
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS amrs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                device_name TEXT NOT NULL,
+                ip_address TEXT NOT NULL UNIQUE,
+                amr_model TEXT,
+                api_version TEXT DEFAULT 'v2.0.0',
+                auth_token TEXT,
+                raspberry_pi_id INTEGER,
+                FOREIGN KEY (raspberry_pi_id) REFERENCES raspberry_pis(id)
+            )
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS amr_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                amr_id INTEGER NOT NULL,
+                timestamp TEXT NOT NULL,
+                battery_percentage REAL,
+                x REAL,
+                y REAL,
+                orientation REAL,
+                linear_velocity REAL,
+                angular_velocity REAL,
+                state_text TEXT,
+                mode_text TEXT,
+                raw_status TEXT,
+                FOREIGN KEY (amr_id) REFERENCES amrs(id)
+            )
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS pi_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                raspberry_pi_id INTEGER NOT NULL,
+                timestamp TEXT NOT NULL,
+                rssi INTEGER,
+                raw_status TEXT,
+                FOREIGN KEY (raspberry_pi_id) REFERENCES raspberry_pis(id)
+            )
+        """)
+
+        conn.commit()
+        conn.close()
+    
+    def load_devices_from_database(self):
+        pass
+
+    def add_raspberry_pi_to_database(self, raspberry_pi):
+        pass
+
+    def add_amr_to_database(self, amr):
+        pass
+
+    def remove_amr_from_database(self, amr):
+        pass
+
+    def remove_raspberry_pi_from_database(self, raspberry_pi):
+        pass
+
+    def save_amr_log(self, amr):
+        pass
+
+    def save_pi_log(self, raspberry_pi):
+        pass
+
+    def poll_all_amrs(self):
+        pass
+
+    def poll_all_raspberry_pis(self):
+        pass
+
+    def active_monitoring(self):
+        pass
 
 
     # gammelt:
