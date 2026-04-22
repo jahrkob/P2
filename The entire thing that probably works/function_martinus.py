@@ -46,8 +46,8 @@ class NetworkMonitorer:
         conn.commit()
         conn.close()
 
-    def save_network_data(self):
+    def save_network_data(self): # Bør nok først laves, når vi har en måde at få data på
         pass
 
-    def save_amr_status_log(self):
+    def save_amr_status_log(self): # Er lidt i tvivl om den her er nødvendig
         pass
