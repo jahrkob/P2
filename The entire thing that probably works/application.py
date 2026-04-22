@@ -155,9 +155,12 @@ class NetworkMonitorer:
         conn.close()
     
     def load_devices_from_database(self):
-        """Load Raspberry Pis and AMRs from the database."""
-        self.amr_list = []
-        self.raspberry_pi_list = []
+        conn = sqlite3.connect("test_database.db")
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT * FROM amr")
+
+        self.amr_list = cursor.fetchall()
 
     def add_amr_to_database(self, amr):
         pass
