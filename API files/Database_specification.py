@@ -7,7 +7,7 @@ from datetime import datetime
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 db = SQLAlchemy(app)
-api = Api(app)
+#api = Api(app) # dont need API anymore since it runs on the fleet managers device
 
 ###############################################################################################################
 ########################## Defining tables(classes), their columns and relationships ##########################
@@ -58,40 +58,40 @@ class Error(db.Model):
 ###############################################################################################################
 
 
-user_args = reqparse.RequestParser()
-user_args.add_argument('table', type=str, required=True, help='table cannot be blank') # if this isnt fulfilled we return 400 (bad request)
-user_args.add_argument('amr_id', type=int, help='id must be integer') # if this isnt fulfilled we return 400 (bad request)
+# user_args = reqparse.RequestParser()
+# user_args.add_argument('table', type=str, required=True, help='table cannot be blank') # if this isnt fulfilled we return 400 (bad request)
+# user_args.add_argument('amr_id', type=int, help='id must be integer') # if this isnt fulfilled we return 400 (bad request)
 
 
-#The format in which the API responses will be given
-amrFields = { # for requesting which AMR's there are
-    'id':fields.Integer,
-    'ip':fields.String,
-    'name':fields.String,
-    'raspi_ip':fields.String
-}
+# #The format in which the API responses will be given
+# amrFields = { # for requesting which AMR's there are
+#     'id':fields.Integer,
+#     'ip':fields.String,
+#     'name':fields.String,
+#     'raspi_ip':fields.String
+# }
 
-dataFields = { # for requesting data from a specific AMR
-    'id':fields.Integer,
-    'amr_id':fields.String,
-    'timestamp':fields.DateTime,
-    'rtt':fields.Float,
-    'jitter':fields.Float,
-    'packet_loss':fields.Float,
-    'signal_strength':fields.Float,
-    'noise':fields.Float,
-    'rssi':fields.Float,
-    'battery':fields.Float,
-    'pos_x':fields.Float,
-    'pos_y':fields.Float,
-}
+# dataFields = { # for requesting data from a specific AMR
+#     'id':fields.Integer,
+#     'amr_id':fields.String,
+#     'timestamp':fields.DateTime,
+#     'rtt':fields.Float,
+#     'jitter':fields.Float,
+#     'packet_loss':fields.Float,
+#     'signal_strength':fields.Float,
+#     'noise':fields.Float,
+#     'rssi':fields.Float,
+#     'battery':fields.Float,
+#     'pos_x':fields.Float,
+#     'pos_y':fields.Float,
+# }
 
-# krævet for at specificere et datetime object i felter (dataFields)
-class DateTime(fields.Raw):
-    def format(self,value):
-        if value is None:
-            return None
-        return value.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+# # krævet for at specificere et datetime object i felter (dataFields)
+# class DateTime(fields.Raw):
+#     def format(self,value):
+#         if value is None:
+#             return None
+#         return value.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 
 # userFields = {
 #     'id':fields.Integer,
@@ -140,5 +140,5 @@ class DateTime(fields.Raw):
 # def home():
 #     return '<h1>Flask REST API</h1>'
 
-if __name__ == '__main__':
-    app.run(debug=True)
+# if __name__ == '__main__':
+#     app.run(debug=True)
