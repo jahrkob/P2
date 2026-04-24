@@ -109,9 +109,9 @@ class NetworkMonitorer:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS amr (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ip VARCHAR(39) NOT NULL,
+                ip VARCHAR(39) NOT NULL UNIQUE,
                 name VARCHAR(80),
-                raspi_ip VARCHAR(80)
+                raspi_ip VARCHAR(80) UNIQUE
             )
         """)
 
@@ -248,16 +248,6 @@ class NetworkMonitorer:
         conn.commit()
         conn.close()
 
-    def clear_errors_for_amr(self, amr_id):
-        """Optional: remove old errors for one AMR."""
-        conn = sqlite3.connect(self.database)
-        cursor = conn.cursor()
-
-        cursor.execute('DELETE FROM "error" WHERE amr_id = ?', (amr_id,))
-
-        conn.commit()
-        conn.close()
-
     def save_api_errors(self, amr):
         errors = amr.get_errors()
 
@@ -339,17 +329,19 @@ class NetworkMonitorer:
         Noise må gerne være None.
         """
 
-        url = f"http://{amr.raspi_ip}/api/get_signal_metrics"
+        url = f"http://{amr.raspi_ip}:5000/api/status"
 
-        response = requests.get(url, timeout=5)
+        headers = {
+        "Authorization": "Bearer YOUR_RASPBERRY_PI_TOKEN"
+        }
+
+        response = requests.get(url, headers=headers, timeout=5)
         response.raise_for_status()
 
         metrics = response.json()
 
         rssi = metrics.get("rssi")
         noise = metrics.get("noise")
-
-        # RSSI svarer til signalstyrke
         signal_strength = rssi
 
         return signal_strength, noise, rssi
