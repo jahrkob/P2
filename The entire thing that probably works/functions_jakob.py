@@ -259,10 +259,7 @@ class NetworkMonitorer:
         conn.close()
 
     def save_api_errors(self, amr):
-        """Save API errors from AMR status JSON."""
         errors = amr.get_errors()
-
-        self.clear_errors_for_amr(amr.amr_id)
 
         if not errors:
             return
@@ -329,9 +326,33 @@ class NetworkMonitorer:
 
     def get_raspi_metrics(self, amr):
         """
-        HOW?
+        Henter signal-metrics fra Raspberry Pi.
+
+        Eksempel på JSON:
+        {
+            "rssi": -71.0,
+            "quality": 39.0,
+            "noise": None
+        }
+
+        RSSI bruges også som signal_strength.
+        Noise må gerne være None.
         """
-        pass
+
+        url = f"http://{amr.raspi_ip}/api/get_signal_metrics"
+
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()
+
+        metrics = response.json()
+
+        rssi = metrics.get("rssi")
+        noise = metrics.get("noise")
+
+        # RSSI svarer til signalstyrke
+        signal_strength = rssi
+
+        return signal_strength, noise, rssi
 
     def monitor_one_amr(self, amr):
         """Poll one AMR, measure network/Wi-Fi, and save to database."""
