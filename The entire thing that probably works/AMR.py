@@ -1,7 +1,8 @@
 import requests
 
-class AMR:
+class AMR(InternetDevice):
     def __init__(self, ip):
+        super().__init__(device_name, ip)
         self.base_url = f"http://{ip}/api/v2.0.0"
         self.headers = {
             "Authorization": "Basic ZGlzdHJpYnV0b3I6NjJmMmYwZjFlZmYxMGQzMTUyYzk1ZjZmMDU5NjU3NmU0ODJiYjhlNDQ4MDY0MzNmNGnmOTI5NzkyODM0YjAxNA==",
