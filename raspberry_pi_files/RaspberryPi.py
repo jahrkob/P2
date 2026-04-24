@@ -1,4 +1,10 @@
 import requests
+from typing import Optional, TypedDict
+
+class SignalData(TypedDict): # So pylance knows what each key in json has as value
+    rssi: float
+    signal_strength: float
+    noise: Optional[float]
 
 class InternetDevice:
     """Base class for all internet-connected devices."""
@@ -15,12 +21,19 @@ class RaspberryPi(InternetDevice):
     def __init__(self, device_name, ip, port=80):
         super().__init__(device_name, ip)
         self.port = port
-        self.__rssi = None
-        self.__signal_strength = None
-        self.__noise = None
+        self.__api_key = {
+            "Authorization": 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc3NzAyODk3OCwianRpIjoiZTdlOWRhMmEtMDY1NS00NzQxLTliNjktZDgwY2E1MGZmMmU0IiwidHlwZSI6ImFjY2VzcyIsInN1YiI6ImRpc3RyaWJ1dG9yIiwibmJmIjoxNzc3MDI4OTc4LCJjc3JmIjoiOTI0MmM1ZDAtZTA3MC00Mzc0LWIwNTQtOGZmM2VkZDExZTJkIiwiZXhwIjoxNzc3MDI5ODc4fQ.z6pxf4CNbpKieDmQKCMo2LPYrroQcsy_5aBui_Oem-0'
+        }
 
-    def get_status(self):
-        api_response = requests.get(f'http://{self.ip}:{self.port}/api/status')
+    def get_signal_metrics(self) -> SignalData:
+        """
+        Returns:
+            json: A json containing:
+                rssi (float)
+                signal_strength (float)
+                noise (Optional[float]): Noise level, null if unavailable.
+        """
+        api_response = requests.get(f'http://{self.ip}:{self.port}/api/status',headers=self.__api_key)
         return api_response.json()
 
 ##### TESTING #####
@@ -31,4 +44,4 @@ rasp = RaspberryPi(name,ip,port)
 
 print(rasp)
 
-print(rasp.get_status())
+print(rasp.get_signal_metrics())

@@ -1,11 +1,17 @@
 from flask import Flask
 from flask_restful import Resource, Api, reqparse, fields, marshal_with, abort
 from datetime import datetime
-from flask_jwt_extended import JWTManager
+from flask_jwt_extended import JWTManager, jwt_required, create_access_token
 
 app = Flask(__name__)
-jwt = JWTManager()
+jwt = JWTManager(app)
 api = Api(app)
+
+app.config['JWT_SECRET_KEY'] = 'distributor'
+
+##### creating api key #####
+# with app.app_context():
+#     print(str(create_access_token('distributor')))
 
 ######## REQUESTS ########
 
@@ -16,11 +22,13 @@ statusFields = { # for requesting which AMR's there are
     'noise':fields.String
 }
 
+
 class Status(Resource):
     @marshal_with(statusFields)
     def get(self): # request status
         return get_wireless_info()
 
+@jwt_required()
 def get_wireless_info(interface="wlan0"):
     with open("/proc/net/wireless") as f:
         lines = f.readlines()
