@@ -5,7 +5,7 @@ class AMR(InternetDevice):
         super().__init__(ip)
         self.base_url = f"http://{ip}/api/v2.0.0"
         self.headers = {
-            "Authorization": "Basic ZGlzdHJpYnV0b3I6NjJmMmYwZjFlZmYxMGQzMTUyYzk1ZjZmMDU5NjU3NmU0ODJiYjhlNDQ4MDY0MzNmNGnmOTI5NzkyODM0YjAxNA==",
+            "Authorization": "Basic ZGlzdHJpYnV0b3I6NjJmMmYwZjFlZmYxMGQzMTUyYzk1ZjZmMDU5NjU3NmU0ODJiYjhlNDQ4MDY0MzNmNGNmOTI5NzkyODM0YjAxNA==",
             "Accept-Language": "en-US",
             "accept": "application/json"
         }
@@ -46,4 +46,7 @@ class AMR(InternetDevice):
         else:
             return(f"Error {response.status_code}: {response.text}")
 
-AMR.get_status()
+if __name__ == "__main__":
+    amr = AMR("192.168.100.51")
+    amr.get_status()
+    amr.get_map()
