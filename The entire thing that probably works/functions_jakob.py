@@ -10,12 +10,12 @@ import requests
 class InternetDevice:
     """Base class for internet-connected devices."""
 
-    def __init__(self, device_name, ip_address):
+    def __init__(self, device_name, ip):
         self.device_name = device_name
-        self.ip_address = ip_address
+        self.ip = ip
 
     def __str__(self):
-        return f"{self.device_name} ({self.ip_address})"
+        return f"{self.device_name} ({self.ip})"
 
 
 class AMR(InternetDevice):
