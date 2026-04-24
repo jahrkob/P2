@@ -16,7 +16,7 @@ db = SQLAlchemy(app)
 class Data(db.Model):
     __tablename__ = 'data'
     id = sql.Column(sql.Integer, primary_key=True)
-    amr_id = sql.Column(sql.Integer,sql.ForeignKey('amr.id'), nullable=False)
+    amr_ip = sql.Column(sql.Integer,sql.ForeignKey('amr.ip'), nullable=False)
     amr = db.relationship('amr', back_populates='data')
     timestamp = sql.Column(sql.DateTime, default=datetime.now, nullable=False)
     rtt = sql.Column(sql.Float)
@@ -33,8 +33,8 @@ class Data(db.Model):
 class AMR(db.Model):
     __tablename__ = 'amr'
     # make sure the json POST and Get requests match the capitalization of these variables
-    id = sql.Column(sql.Integer, primary_key=True)
-    ip = sql.Column(sql.String(39), unique=True, nullable=False) #accepts ip as string support up to IPv6 length
+    #id = sql.Column(sql.Integer, primary_key=True)
+    ip = sql.Column(sql.String(39), unique=True, nullable=False, primary_key=True) #accepts ip as string support up to IPv6 length
     name = sql.Column(sql.String(80), nullable=True) #name is optional
     data = db.relationship('data',back_populates='amr')
     error = db.relationship('error',back_populates='amr')
@@ -46,7 +46,7 @@ class AMR(db.Model):
 class Error(db.Model):
     __tablename__ = 'error'
     id = sql.Column(sql.Integer, primary_key=True)
-    amr_id = sql.Column(sql.Integer,sql.ForeignKey('amr.id'), nullable=False)
+    amr_ip = sql.Column(sql.Integer,sql.ForeignKey('amr.ip'), nullable=False)
     amr = db.relationship('error', back_populates='data')
     timestamp = sql.Column(sql.DateTime, default=datetime.now, nullable=False)
     error = sql.Column(sql.Text, nullable=False)
