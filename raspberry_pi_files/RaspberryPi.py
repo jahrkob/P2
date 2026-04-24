@@ -22,7 +22,7 @@ class RaspberryPi(InternetDevice):
         super().__init__(device_name, ip)
         self.port = port
         self.__api_key = {
-            "Authorization": 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc3NzAyODk3OCwianRpIjoiZTdlOWRhMmEtMDY1NS00NzQxLTliNjktZDgwY2E1MGZmMmU0IiwidHlwZSI6ImFjY2VzcyIsInN1YiI6ImRpc3RyaWJ1dG9yIiwibmJmIjoxNzc3MDI4OTc4LCJjc3JmIjoiOTI0MmM1ZDAtZTA3MC00Mzc0LWIwNTQtOGZmM2VkZDExZTJkIiwiZXhwIjoxNzc3MDI5ODc4fQ.z6pxf4CNbpKieDmQKCMo2LPYrroQcsy_5aBui_Oem-0'
+            "Authorization": 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc3NzAzMDA4NSwianRpIjoiMmQ4YmRjMzUtOWU5ZC00NjdiLWIzZmEtMDA5ODBmYTY3NTBmIiwidHlwZSI6ImFjY2VzcyIsInN1YiI6ImRpc3RyaWJ1dG9yIiwibmJmIjoxNzc3MDMwMDg1LCJjc3JmIjoiZWQ1NTkxNmQtNDg3OS00NjZmLTlhMDctZGJlY2Y0N2Y0OTM3In0.-ndt5YYzRl7YvSUk76CSOsn163Plx9NTYEYf0YRneNs'
         }
 
     def get_signal_metrics(self) -> SignalData:
@@ -41,7 +41,5 @@ name = 'testing_rasp' # can be whatever
 ip = '192.168.200.243'
 port = 5000 # Only 5000 for testing in reality should be 80
 rasp = RaspberryPi(name,ip,port)
-
-print(rasp)
 
 print(rasp.get_signal_metrics())

@@ -24,11 +24,12 @@ statusFields = { # for requesting which AMR's there are
 
 
 class Status(Resource):
+    @jwt_required()
     @marshal_with(statusFields)
     def get(self): # request status
         return get_wireless_info()
 
-@jwt_required()
+
 def get_wireless_info(interface="wlan0"):
     with open("/proc/net/wireless") as f:
         lines = f.readlines()
