@@ -9,17 +9,17 @@ api = Api(app)
 
 app.config['JWT_SECRET_KEY'] = 'distributor'
 
-##### creating api key #####
+# ##### creating api key #####
 # with app.app_context():
-#     print(str(create_access_token('distributor')))
+#     print(str(create_access_token('distributor',expires_delta=False)))
 
 ######## REQUESTS ########
 
 #The format in which the API responses will be given
 statusFields = { # for requesting which AMR's there are
-    'rssi':fields.String,
-    'signal_strength':fields.String,
-    'noise':fields.String
+    'rssi':fields.Float,
+    'quality':fields.Float,
+    'noise':fields.Float
 }
 
 
@@ -38,12 +38,13 @@ def get_wireless_info(interface="wlan0"):
         if line.strip().startswith(interface):
             parts = line.split()
 
+            quality = float(parts[2])
             signal = float(parts[3])
             noise = float(parts[4])
 
             return {
                 "rssi": signal,
-                "signal_strength": signal,
+                "quality": quality,
                 "noise": noise if noise != -256.0 else None
             }
 
