@@ -17,7 +17,7 @@ class Data(db.Model):
     __tablename__ = 'data'
     id = sql.Column(sql.Integer, primary_key=True)
     amr_ip = sql.Column(sql.Integer,sql.ForeignKey('amr.ip'), nullable=False)
-    amr = db.relationship('amr', back_populates='data')
+    amr = db.relationship('AMR', back_populates='data')
     timestamp = sql.Column(sql.DateTime, default=datetime.now, nullable=False)
     rtt = sql.Column(sql.Float)
     jitter = sql.Column(sql.Float)
@@ -36,8 +36,8 @@ class AMR(db.Model):
     #id = sql.Column(sql.Integer, primary_key=True)
     ip = sql.Column(sql.String(39), unique=True, nullable=False, primary_key=True) #accepts ip as string support up to IPv6 length
     name = sql.Column(sql.String(80), nullable=True) #name is optional
-    data = db.relationship('data',back_populates='amr')
-    error = db.relationship('error',back_populates='amr')
+    data = db.relationship('Data',back_populates='amr')
+    error = db.relationship('Error',back_populates='amr')
     raspi_ip = sql.Column(sql.String(80), unique=True, nullable=False)
 
     def __repr__(self):
@@ -47,7 +47,7 @@ class Error(db.Model):
     __tablename__ = 'error'
     id = sql.Column(sql.Integer, primary_key=True)
     amr_ip = sql.Column(sql.Integer,sql.ForeignKey('amr.ip'), nullable=False)
-    amr = db.relationship('error', back_populates='data')
+    amr = db.relationship('AMR', back_populates='error')
     timestamp = sql.Column(sql.DateTime, default=datetime.now, nullable=False)
     error = sql.Column(sql.Text, nullable=False)
     error_desc = sql.Column(sql.Text)
