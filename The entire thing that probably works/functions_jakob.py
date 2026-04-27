@@ -21,10 +21,10 @@ class InternetDevice:
 class AMR(InternetDevice):
     """Autonomous Mobile Robot."""
 
-    def __init__(self, amr_id, ip, name, raspi_ip, auth_token=None, api_version="v2.0.0"):
-        super().__init__(name, ip)
-        self.amr_id = amr_id
-        self.ip = ip
+    def __init__(self, id, amr_ip, name, raspi_ip, auth_token=None, api_version="v2.0.0"):
+        super().__init__(name, amr_ip)
+        self.id = id
+        self.amr_ip = amr_ip
         self.name = name
         self.raspi_ip = raspi_ip
         self.auth_token = auth_token
@@ -38,7 +38,7 @@ class AMR(InternetDevice):
         state = self.get_state_text()
         mode = self.get_mode_text()
         return (
-            f"{self.name} ({self.ip}) - "
+            f"{self.name} ({self.amr_ip}) - "
             f"RasPi IP: {self.raspi_ip}, "
             f"Battery: {battery}, State: {state}, Mode: {mode}"
         )
@@ -53,7 +53,7 @@ class AMR(InternetDevice):
         if self.auth_token:
             headers["Authorization"] = f"Basic {self.auth_token}"
 
-        url = f"http://{self.ip}/api/{self.api_version}/status"
+        url = f"http://{self.amr_ip}/api/{self.api_version}/status"
         response = requests.get(url, headers=headers, timeout=5)
 
         self.status_code = response.status_code
@@ -164,15 +164,15 @@ class NetworkMonitorer:
 
         for row in rows:
             amr = AMR(
-                amr_id=row[0],
-                ip=row[1],
+                id=row[0],
+                amr_ip=row[1],
                 name=row[2],
                 raspi_ip=row[3],
                 auth_token=self.auth_token
             )
             self.amr_list.append(amr)
 
-    def add_amr_to_database(self, ip, name, raspi_ip):
+    def add_amr_to_database(self, amr_ip, name, raspi_ip):
         """Add a new AMR to database."""
         conn = sqlite3.connect(self.database)
         cursor = conn.cursor()
@@ -180,7 +180,7 @@ class NetworkMonitorer:
         cursor.execute("""
             INSERT INTO amr (ip, name, raspi_ip)
             VALUES (?, ?, ?)
-        """, (ip, name, raspi_ip))
+        """, (amr_ip, name, raspi_ip))
 
         conn.commit()
         conn.close()
@@ -271,7 +271,7 @@ class NetworkMonitorer:
         """
         try:
             result = subprocess.run(
-                ["ping", "-c", "4", amr.ip],
+                ["ping", "-c", "4", amr.amr_ip],
                 capture_output=True,
                 text=True,
                 timeout=10
