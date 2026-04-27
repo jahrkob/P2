@@ -13,52 +13,95 @@ import sqlite3, json, time, subprocess, requests
 from datetime import datetime
 
 class InternetDevice:
-    """Base class for all internet-connected devices."""
+    """Base class for internet-connected devices."""
 
-    def __init__(self, device_name, ip_address):
+    def __init__(self, device_name, ip):
         self.device_name = device_name
-        self.ip_address = ip_address
+        self.ip = ip
 
     def __str__(self):
-        return f"{self.device_name} ({self.ip_address})"
+        return f"{self.device_name} ({self.ip})"
     
 class AMR(InternetDevice):
-    """Autonomous Mobile Robot (AMR) class inheriting from InternetDevice."""
+    """Autonomous Mobile Robot."""
 
-    def __init__(self, device_name, ip_address, status_code, status, amr_model, associated_raspberry_pi):
-        super().__init__(device_name, ip_address)
-        self.__status_code = status_code
-        self.__status = status
-        self.__amr_model = amr_model
-        self.associated_raspberry_pi = associated_raspberry_pi
+    def __init__(self, id, amr_ip, name, raspi_ip, api_version="v2.0.0"):
+        super().__init__(name, amr_ip)
+        self.id = id
+        self.amr_ip = amr_ip
+        self.name = name
+        self.raspi_ip = raspi_ip
+        self.auth_token = "ZGlzdHJpYnV0b3I6NjjmMmYwZjFlZmYxMGQzMTUyYzk1ZjZmMDU5NjU3NmU0ODJiYjhINDQ4MDY0MzNmNGNmOTI5NzkyODM0YjAxNA=="
+        self.api_version = api_version
 
-    def __str__(self):
-        return f"{super().__str__()} - Status Code: {self.__status_code}, Status: {self.__status}, AMR Model: {self.__amr_model}, Associated Raspberry Pi: {self.associated_raspberry_pi}"
+        self.status_code = None
+        self.status = {}
+
+    # Måske overflødigt
+    # def __str__(self):
+    #     battery = self.get_battery_percentage()
+    #     state = self.get_state_text()
+    #     mode = self.get_mode_text()
+    #     return (
+    #         f"{self.name} ({self.amr_ip}) - "
+    #         f"RasPi IP: {self.raspi_ip}, "
+    #         f"Battery: {battery}, State: {state}, Mode: {mode}"
+    #     )
+
+    def update_status(self):
+        """Fetch live status from the AMR API."""
+        headers = {
+            "accept": "application/json",
+            "Accept-Language": "en_US"
+        }
+
+        if self.auth_token:
+            headers["Authorization"] = f"Basic {self.auth_token}"
+
+        url = f"http://{self.amr_ip}/api/{self.api_version}/status"
+        response = requests.get(url, headers=headers, timeout=5)
+
+        self.status_code = response.status_code
+        response.raise_for_status()
+        self.status = response.json()
+
+    def get_battery_percentage(self):
+        return self.status.get("battery_percentage")
+
+    def get_position(self):
+        return self.status.get("position", {})
+
+    def get_pos_x(self):
+        return self.get_position().get("x")
+
+    def get_pos_y(self):
+        return self.get_position().get("y")
+
+    def get_state_text(self):
+        return self.status.get("state_text")
+
+    def get_mode_text(self):
+        return self.status.get("mode_text")
+
+    def get_errors(self):
+        return self.status.get("errors", [])
+
+# Udkommenteret for nu
+# class RaspberryPi(InternetDevice):
+#     """Raspberry Pi class inheriting from InternetDevice."""
+
+#     def __init__(self, device_name, ip_address, status_code, status, raspberry_pi_model):
+#         super().__init__(device_name, ip_address)
+#         self.__status_code = status_code
+#         self.__status = status
+#         self.__raspberry_pi_model = raspberry_pi_model
+#         self.__rssi = None
+
+#     def __str__(self):
+#         return f"{super().__str__()} - Status Code: {self.__status_code}, Status: {self.__status}, Raspberry Pi Model: {self.__raspberry_pi_model}"
     
-    def get_status_code(self):
-        return self.__status_code
-    
-    def get_status(self):
-        """Get battery percentage and position of the AMR."""
-        battery_percentage = self.__status.get('battery_percentage', 'Unknown')
-        position = self.__status.get('position', 'Unknown')
-        return battery_percentage, position
-
-class RaspberryPi(InternetDevice):
-    """Raspberry Pi class inheriting from InternetDevice."""
-
-    def __init__(self, device_name, ip_address, status_code, status, raspberry_pi_model):
-        super().__init__(device_name, ip_address)
-        self.__status_code = status_code
-        self.__status = status
-        self.__raspberry_pi_model = raspberry_pi_model
-        self.__rssi = None
-
-    def __str__(self):
-        return f"{super().__str__()} - Status Code: {self.__status_code}, Status: {self.__status}, Raspberry Pi Model: {self.__raspberry_pi_model}"
-    
-    def get_rssi(self):
-        return self.__rssi
+#     def get_rssi(self):
+#         return self.__rssi
     
 class NetworkMonitorer:
     """Class to monitor the network and manage the fleet of AMRs."""
@@ -68,9 +111,7 @@ class NetworkMonitorer:
         self.database = database
         self.auth_token = auth_token
         self.amr_list = []
-
-        self.initialize_database()
-        self.load_devices_from_database()
+        self.load_amr_database()
 
     def __str__(self):
         amr_info = "\n".join(str(amr) for amr in self.amr_list)
@@ -80,7 +121,7 @@ class NetworkMonitorer:
         )
 
     def load_amr_database(self):
-        conn = sqlite3.connect("test_database.db")
+        conn = sqlite3.connect(self.database)
         cursor = conn.cursor()
 
         cursor.execute("SELECT * FROM amr")
@@ -91,7 +132,7 @@ class NetworkMonitorer:
         conn.close()
 
     def add_amr_to_database(self, id, ip, name, raspi_ip):
-        conn = sqlite3.connect("test_database.db")
+        conn = sqlite3.connect(self.database)
         cursor = conn.cursor()
 
         cursor.execute(
@@ -104,7 +145,7 @@ class NetworkMonitorer:
     def remove_amr_from_database(self, id):
         """Removes an AMR from all tables in the database"""
         # Kan evt. opdeles i flere funktioner, så den sletter fra enkelte tables i stedet for hele databasen
-        conn = sqlite3.connect("test_database.db")
+        conn = sqlite3.connect(self.database)
         cursor = conn.cursor()
 
         try: # try except ensures that data will only be deleted if it succeeds in deleting the specific AMR from ALL tables, else nothing is deleted
@@ -126,7 +167,7 @@ class NetworkMonitorer:
     # Jeg antager at det bare er alt i "data" table i databasen. Kan nemt rettes, hvis nødvendigt.
     def save_amr_data(self, id, amr_ip, rtt, jitter, packet_loss, signal_strength, noise, rssi, battery, pos_x, pos_y):
         """Saves all network data to database"""
-        conn = sqlite3.connect("test_database.db")
+        conn = sqlite3.connect(self.database)
         cursor = conn.cursor()
 
         timestamp = datetime.now().isoformat()
@@ -142,7 +183,7 @@ class NetworkMonitorer:
     # Jeg antager at det her er alt der skal i "error" table.
     def save_amr_error(self, id, amr_ip, error, error_desc):
         """Saves status of amr to database"""
-        conn = sqlite3.connect("test_database.db")
+        conn = sqlite3.connect(self.database)
         cursor = conn.cursor()
         
         timestamp = datetime.now().isoformat()
@@ -156,21 +197,21 @@ class NetworkMonitorer:
         conn.close()
 
     # Skal laves når AMR class er færdig
-    # def save_api_errors(self):
-    #     errors = AMR.get_errors()
+    def save_api_errors(self, amr):
+        errors = amr.get_errors()
 
-    #     if not errors:
-    #         return
+        if not errors:
+            return
 
-    #     for err in errors:
-    #         if isinstance(err, dict):
-    #             error_name = str(err.get("code", err.get("error", "API_ERROR")))
-    #             error_desc = str(err.get("description", err.get("message", json.dumps(err))))
-    #         else:
-    #             error_name = "API_ERROR"
-    #             error_desc = str(err)
+        for err in errors:
+            if isinstance(err, dict):
+                error_name = str(err.get("code", err.get("error", "API_ERROR")))
+                error_desc = str(err.get("description", err.get("message", json.dumps(err))))
+            else:
+                error_name = "API_ERROR"
+                error_desc = str(err)
 
-    #         self.save_amr_error(amr.amr_id, error_name, error_desc)
+            self.save_amr_error(amr.id, amr.amr_ip, error_name, error_desc)
 
     def measure_network_metrics(self, amr): # Der skal laves amr objekter med AMR classen
         """
@@ -219,7 +260,7 @@ class NetworkMonitorer:
             return rtt, jitter, packet_loss
 
         except Exception as e:
-            self.save_error(amr.amr_id, "NETWORK_MEASUREMENT_ERROR", str(e))
+            self.save_amr_error(amr.id, amr.amr_ip, "NETWORK_MEASUREMENT_ERROR", str(e))
             return 0.0, 0.0, 100.0
 
     def get_raspi_metrics(self, amr):
@@ -256,7 +297,6 @@ class NetworkMonitorer:
 
     def monitor_one_amr(self, amr):
         """Poll one AMR, measure network/Wi-Fi, and save to database."""
-        timestamp = datetime.now().isoformat()
 
         rtt = None
         jitter = None
@@ -276,21 +316,21 @@ class NetworkMonitorer:
             self.save_api_errors(amr)
 
         except Exception as e:
-            self.save_error(amr.amr_id, "POLLING_ERROR", str(e))
+            self.save_amr_error(amr.id, amr.amr_ip, "POLLING_ERROR", str(e))
 
         try:
             rtt, jitter, packet_loss = self.measure_network_metrics(amr)
         except Exception as e:
-            self.save_error(amr.amr_id, "PING_ERROR", str(e))
+            self.save_amr_error(amr.id, amr.amr_ip, "PING_ERROR", str(e))
 
         try:
             signal_strength, noise, rssi = self.get_raspi_metrics(amr)
         except Exception as e:
-            self.save_error(amr.amr_id, "RASPI_METRICS_ERROR", str(e))
+            self.save_amr_error(amr.id, amr.amr_ip, "RASPI_METRICS_ERROR", str(e))
 
-        self.save_data_row(
-            amr_id=amr.amr_id,
-            timestamp=timestamp,
+        self.save_amr_data(
+            id=amr.id,
+            amr_ip=amr.amr_ip,
             rtt=rtt,
             jitter=jitter,
             packet_loss=packet_loss,
@@ -325,7 +365,7 @@ class NetworkMonitorer:
             print(f"\n--- Ny monitoreringscyklus {cycle + 1} | {datetime.now().isoformat()} ---")
 
             if reload_from_database:
-                self.load_amrs_from_database()
+                self.load_amr_database()
 
             for amr in self.amr_list:
                 self.monitor_one_amr(amr)

@@ -21,27 +21,28 @@ class InternetDevice:
 class AMR(InternetDevice):
     """Autonomous Mobile Robot."""
 
-    def __init__(self, id, amr_ip, name, raspi_ip, auth_token=None, api_version="v2.0.0"):
+    def __init__(self, id, amr_ip, name, raspi_ip, api_version="v2.0.0"):
         super().__init__(name, amr_ip)
         self.id = id
         self.amr_ip = amr_ip
         self.name = name
         self.raspi_ip = raspi_ip
-        self.auth_token = auth_token
+        self.auth_token = "ZGlzdHJpYnV0b3I6NjjmMmYwZjFlZmYxMGQzMTUyYzk1ZjZmMDU5NjU3NmU0ODJiYjhINDQ4MDY0MzNmNGNmOTI5NzkyODM0YjAxNA=="
         self.api_version = api_version
 
         self.status_code = None
         self.status = {}
 
-    def __str__(self):
-        battery = self.get_battery_percentage()
-        state = self.get_state_text()
-        mode = self.get_mode_text()
-        return (
-            f"{self.name} ({self.amr_ip}) - "
-            f"RasPi IP: {self.raspi_ip}, "
-            f"Battery: {battery}, State: {state}, Mode: {mode}"
-        )
+    # Måske overflødigt
+    # def __str__(self):
+    #     battery = self.get_battery_percentage()
+    #     state = self.get_state_text()
+    #     mode = self.get_mode_text()
+    #     return (
+    #         f"{self.name} ({self.amr_ip}) - "
+    #         f"RasPi IP: {self.raspi_ip}, "
+    #         f"Battery: {battery}, State: {state}, Mode: {mode}"
+    #     )
 
     def update_status(self):
         """Fetch live status from the AMR API."""
