@@ -1,83 +1,73 @@
-"""
-Monitor AMRs and Raspberry Pi devices using real HTTP APIs.
-
-Classes:
-- InternetDevice
-- AMR
-- RaspberryPi
-- NetworkMonitorer
-- DataGrapher
-"""
-
 import sqlite3, json, time, subprocess, requests
 from datetime import datetime
-from internet_device import InternetDevice
+from internet_device import InternetDevice # | Den her er nok overflødig
+from amr import AMR
     
-class AMR(InternetDevice):
-    """Autonomous Mobile Robot."""
+# class AMR(InternetDevice):
+#     """Autonomous Mobile Robot."""
 
-    def __init__(self, id, amr_ip, name, raspi_ip, api_version="v2.0.0"):
-        super().__init__(name, amr_ip)
-        self.id = id
-        self.amr_ip = amr_ip
-        self.name = name
-        self.raspi_ip = raspi_ip
-        self.auth_token = "ZGlzdHJpYnV0b3I6NjjmMmYwZjFlZmYxMGQzMTUyYzk1ZjZmMDU5NjU3NmU0ODJiYjhINDQ4MDY0MzNmNGNmOTI5NzkyODM0YjAxNA=="
-        self.api_version = api_version
+#     def __init__(self, id, amr_ip, name, raspi_ip, api_version="v2.0.0"):
+#         super().__init__(name, amr_ip)
+#         self.id = id
+#         self.amr_ip = amr_ip
+#         self.name = name
+#         self.raspi_ip = raspi_ip
+#         self.auth_token = "ZGlzdHJpYnV0b3I6NjjmMmYwZjFlZmYxMGQzMTUyYzk1ZjZmMDU5NjU3NmU0ODJiYjhINDQ4MDY0MzNmNGNmOTI5NzkyODM0YjAxNA=="
+#         self.api_version = api_version
 
-        self.status_code = None
-        self.status = {}
+#         self.status_code = None
+#         self.status = {}
 
-    # Måske overflødigt
-    # def __str__(self):
-    #     battery = self.get_battery_percentage()
-    #     state = self.get_state_text()
-    #     mode = self.get_mode_text()
-    #     return (
-    #         f"{self.name} ({self.amr_ip}) - "
-    #         f"RasPi IP: {self.raspi_ip}, "
-    #         f"Battery: {battery}, State: {state}, Mode: {mode}"
-    #     )
+#     # Måske overflødigt
+#     # def __str__(self):
+#     #     battery = self.get_battery_percentage()
+#     #     state = self.get_state_text()
+#     #     mode = self.get_mode_text()
+#     #     return (
+#     #         f"{self.name} ({self.amr_ip}) - "
+#     #         f"RasPi IP: {self.raspi_ip}, "
+#     #         f"Battery: {battery}, State: {state}, Mode: {mode}"
+#     #     )
 
-    def update_status(self):
-        """Fetch live status from the AMR API."""
-        headers = {
-            "accept": "application/json",
-            "Accept-Language": "en_US"
-        }
+#     def update_status(self):
+#         """Fetch live status from the AMR API."""
+#         headers = {
+#             "accept": "application/json",
+#             "Accept-Language": "en_US"
+#         }
 
-        if self.auth_token:
-            headers["Authorization"] = f"Basic {self.auth_token}"
+#         if self.auth_token:
+#             headers["Authorization"] = f"Basic {self.auth_token}"
 
-        url = f"http://{self.amr_ip}/api/{self.api_version}/status"
-        response = requests.get(url, headers=headers, timeout=5)
+#         url = f"http://{self.amr_ip}/api/{self.api_version}/status"
+#         response = requests.get(url, headers=headers, timeout=5)
 
-        self.status_code = response.status_code
-        response.raise_for_status()
-        self.status = response.json()
+#         self.status_code = response.status_code
+#         response.raise_for_status()
+#         self.status = response.json()
 
-    def get_battery_percentage(self):
-        return self.status.get("battery_percentage")
+#     def get_battery_percentage(self):
+#         return self.status.get("battery_percentage")
 
-    def get_position(self):
-        return self.status.get("position", {})
+#     def get_position(self):
+#         return self.status.get("position", {})
 
-    def get_pos_x(self):
-        return self.get_position().get("x")
+#     def get_pos_x(self):
+#         return self.get_position().get("x")
 
-    def get_pos_y(self):
-        return self.get_position().get("y")
+#     def get_pos_y(self):
+#         return self.get_position().get("y")
 
-    def get_state_text(self):
-        return self.status.get("state_text")
+#     def get_state_text(self):
+#         return self.status.get("state_text")
 
-    def get_mode_text(self):
-        return self.status.get("mode_text")
+#     def get_mode_text(self):
+#         return self.status.get("mode_text")
 
-    def get_errors(self):
-        if not self.status: # Opdaterer status hvis den ikke har en endnu, da errors ellers ville være tom. Kan evt. fjernes
-            self.update_status() 
-        return self.status.get("errors", [])
+#     def get_errors(self):
+#         if not self.status: # Opdaterer status hvis den ikke har en endnu, da errors ellers ville være tom. Kan evt. fjernes
+#             self.update_status() 
+#         return self.status.get("errors", [])
 
 class NetworkMonitorer:
     """Class to monitor the network and manage the fleet of AMRs."""
@@ -173,7 +163,7 @@ class NetworkMonitorer:
         conn.close()
 
     # Skal laves når AMR class er færdig
-    def save_api_errors(self, amr):
+    def save_api_errors(self, amr: AMR):
         errors = amr.get_errors()
 
         if not errors:
@@ -189,7 +179,7 @@ class NetworkMonitorer:
 
             self.save_amr_error(amr.id, amr.amr_ip, error_name, error_desc)
 
-    def measure_network_metrics(self, amr): # Der skal laves amr objekter med AMR classen
+    def measure_network_metrics(self, amr: AMR): # Der skal laves amr objekter med AMR classen
         """
         Measure RTT, jitter and packet loss using ping.
         Works on typical Linux ping output.
@@ -239,7 +229,7 @@ class NetworkMonitorer:
             self.save_amr_error(amr.id, amr.amr_ip, "NETWORK_MEASUREMENT_ERROR", str(e))
             return 0.0, 0.0, 100.0
 
-    def get_raspi_metrics(self, amr):
+    def get_raspi_metrics(self, amr: AMR):
         """
         Henter signal-metrics fra Raspberry Pi.
 
@@ -271,7 +261,7 @@ class NetworkMonitorer:
 
         return signal_strength, noise, rssi
 
-    def monitor_one_amr(self, amr):
+    def monitor_one_amr(self, amr: AMR):
         """Poll one AMR, measure network/Wi-Fi, and save to database."""
 
         rtt = None
@@ -285,7 +275,8 @@ class NetworkMonitorer:
         pos_y = None
 
         try:
-            amr.update_status()
+            amr.update_status() # vi skal finde ud af om vi bruge get eller update
+            amr.get_status()
             battery = amr.get_battery_percentage()
             pos_x = amr.get_pos_x()
             pos_y = amr.get_pos_y()
