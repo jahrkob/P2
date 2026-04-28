@@ -2,6 +2,7 @@ import sqlite3, json, time, subprocess, requests
 from datetime import datetime
 from internet_device import InternetDevice # | Den her er nok overflødig
 from amr import AMR
+from data_grapher import DataGrapher
 
 # ligger nu i amr.py
 # class AMR(InternetDevice):
@@ -345,18 +346,19 @@ class NetworkMonitorer:
 
             time.sleep(interval_seconds)
 
-# Til GUI
-class DataGrapher:
-    """Class to graph the data collected from the AMRs and Raspberry Pi."""
-    def __init__(self):
-        self.data = []
+# Note: Flyttet til datagrapher.py
+# # Til GUI
+# class DataGrapher:
+#     """Class to graph the data collected from the AMRs and Raspberry Pi."""
+#     def __init__(self):
+#         self.data = []
 
-    def add_data(self, data_point):
-        self.data.append(data_point)
+#     def add_data(self, data_point):
+#         self.data.append(data_point)
 
-    def display_data(self):
-        for data_point in self.data:
-            print(data_point)
+#     def display_data(self):
+#         for data_point in self.data:
+#             print(data_point)
 
 # til test
 # if __name__ == "__main__":
