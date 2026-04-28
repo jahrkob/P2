@@ -2,6 +2,8 @@ import requests
 from internet_device import InternetDevice
 
 class AMR(InternetDevice):
+    """Autonomous Mobile Robot."""
+
     def __init__(self, id, ip, amr_ip, name, raspi_ip):
         super().__init__(ip)
         self.id = id
