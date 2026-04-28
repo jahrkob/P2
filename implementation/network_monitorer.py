@@ -1,7 +1,7 @@
 import sqlite3, json, time, subprocess, requests
 from datetime import datetime
 from internet_device import InternetDevice # | Den her er nok overflødig
-from implementation.amr_test import AMR
+from amr import AMR
 from data_grapher import DataGrapher
 from raspberry_pi_files.RaspberryPi import RaspberryPi
 
