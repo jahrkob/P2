@@ -1,4 +1,5 @@
 import requests
+from internet_device import InternetDevice
 
 class AMR(InternetDevice):
     def __init__(self, ip):
