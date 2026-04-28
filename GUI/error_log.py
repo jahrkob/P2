@@ -8,7 +8,7 @@ class ErrorLogPage(ctk.CTkFrame):
 
         ctk.CTkLabel(self, text="Error Log", font=("Arial", 20)).pack(pady=10)
 
-        self.textbox = ctk.CTkTextbox(self, width=800, height=500)
+        self.textbox = ctk.CTkTextbox(self, width=800, height=500, font=('Consolas',12))
         self.textbox.pack(padx=10, pady=10, fill="both", expand=True)
 
         # Track last loaded row count
