@@ -2,7 +2,8 @@ import sqlite3, json, time, subprocess, requests
 from datetime import datetime
 from internet_device import InternetDevice # | Den her er nok overflødig
 from amr import AMR
-    
+
+# ligger nu i amr.py
 # class AMR(InternetDevice):
 #     """Autonomous Mobile Robot."""
 
