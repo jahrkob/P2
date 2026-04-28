@@ -1,6 +1,6 @@
 import requests
 from typing import Optional, TypedDict
-from implementation.internet_device import InternetDevice
+from internet_device import InternetDevice
 
 class SignalData(TypedDict): # So pylance knows what each key in json has as value
     rssi: float
