@@ -1,7 +1,7 @@
 class InternetDevice:
     """Base class for all internet-connected devices."""
 
-    def __init__(self, device_name, ip):
+    def __init__(self, ip, device_name=""):
         self.device_name = device_name
         self.ip = ip # ip address
 
