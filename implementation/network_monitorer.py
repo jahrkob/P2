@@ -3,8 +3,7 @@ from datetime import datetime
 from internet_device import InternetDevice # | Den her er nok overflødig
 from amr import AMR
 from data_grapher import DataGrapher
-
-
+from raspberry_pi_files.RaspberryPi import RaspberryPi
 
 class NetworkMonitorer:
     """Class to monitor the network and manage the fleet of AMRs."""
@@ -166,37 +165,38 @@ class NetworkMonitorer:
             self.save_amr_error(amr.id, amr.amr_ip, "NETWORK_MEASUREMENT_ERROR", str(e))
             return 0.0, 0.0, 100.0
 
-    def get_raspi_metrics(self, amr: AMR):
-        """
-        Henter signal-metrics fra Raspberry Pi.
+    # Note: vi skal i stedet bruge RaspberryPi.get_signal_metrics()
+    # def get_raspi_metrics(self, amr: AMR):
+    #     """
+    #     Henter signal-metrics fra Raspberry Pi.
 
-        Eksempel på JSON:
-        {
-            "rssi": -71.0,
-            "quality": 39.0,
-            "noise": None
-        }
+    #     Eksempel på JSON:
+    #     {
+    #         "rssi": -71.0,
+    #         "quality": 39.0,
+    #         "noise": None
+    #     }
 
-        RSSI bruges også som signal_strength.
-        Noise må gerne være None.
-        """
+    #     RSSI bruges også som signal_strength.
+    #     Noise må gerne være None.
+    #     """
 
-        url = f"http://{amr.raspi_ip}:5000/api/status"
+    #     url = f"http://{amr.raspi_ip}:5000/api/status"
 
-        headers = {
-        "Authorization": "Bearer YOUR_RASPBERRY_PI_TOKEN"
-        }
+    #     headers = {
+    #     "Authorization": "Bearer YOUR_RASPBERRY_PI_TOKEN"
+    #     }
 
-        response = requests.get(url, headers=headers, timeout=5)
-        response.raise_for_status()
+    #     response = requests.get(url, headers=headers, timeout=5)
+    #     response.raise_for_status()
 
-        metrics = response.json()
+    #     metrics = response.json()
 
-        rssi = metrics.get("rssi")
-        noise = metrics.get("noise")
-        signal_strength = rssi
+    #     rssi = metrics.get("rssi")
+    #     noise = metrics.get("noise")
+    #     signal_strength = rssi
 
-        return signal_strength, noise, rssi
+    #     return signal_strength, noise, rssi
 
     def monitor_one_amr(self, amr: AMR):
         """Poll one AMR, measure network/Wi-Fi, and save to database."""
@@ -228,7 +228,7 @@ class NetworkMonitorer:
             self.save_amr_error(amr.id, amr.amr_ip, "PING_ERROR", str(e))
 
         try:
-            signal_strength, noise, rssi = self.get_raspi_metrics(amr)
+            signal_strength, noise, rssi = RaspberryPi.get_signal_metrics(amr)
         except Exception as e:
             self.save_amr_error(amr.id, amr.amr_ip, "RASPI_METRICS_ERROR", str(e))
 

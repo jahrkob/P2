@@ -24,7 +24,13 @@ class RaspberryPi(InternetDevice):
                 noise (Optional[float]): Noise level, null if unavailable.
         """
         api_response = requests.get(f'http://{self.ip}:{self.port}/api/status',headers=self.__api_key)
-        return api_response.json()
+        api_response.raise_for_status() # Raises an HTTPError if the response was an error
+
+        rssi = api_response.json().get('rssi')
+        signal_strength = api_response.json().get('signal_strength')
+        noise = api_response.json().get('noise')
+
+        return api_response.json(), rssi, signal_strength, noise
 
 ##### TESTING #####
 name = 'testing_rasp' # can be whatever
