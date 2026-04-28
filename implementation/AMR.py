@@ -2,6 +2,8 @@ import requests
 from internet_device import InternetDevice
 
 class AMR(InternetDevice):
+    """Autonomous Mobile Robot."""
+
     def __init__(self, id, ip, amr_ip, name, raspi_ip):
         super().__init__(ip)
         self.id = id
@@ -15,7 +17,7 @@ class AMR(InternetDevice):
             "accept": "application/json"
         }
 
-    # __init__ kan evt. se sådan ud
+    # __init__ kan evt. se sådan ud hvis update status skal bruges
     # def __init__(self, id, amr_ip, name, raspi_ip, api_version="v2.0.0"):
     #     super().__init__(name, amr_ip)
     #     self.id = id

@@ -2,73 +2,8 @@ import sqlite3, json, time, subprocess, requests
 from datetime import datetime
 from internet_device import InternetDevice # | Den her er nok overflødig
 from amr import AMR
-
-# ligger nu i amr.py
-# class AMR(InternetDevice):
-#     """Autonomous Mobile Robot."""
-
-#     def __init__(self, id, amr_ip, name, raspi_ip, api_version="v2.0.0"):
-#         super().__init__(name, amr_ip)
-#         self.id = id
-#         self.amr_ip = amr_ip
-#         self.name = name
-#         self.raspi_ip = raspi_ip
-#         self.auth_token = "ZGlzdHJpYnV0b3I6NjjmMmYwZjFlZmYxMGQzMTUyYzk1ZjZmMDU5NjU3NmU0ODJiYjhINDQ4MDY0MzNmNGNmOTI5NzkyODM0YjAxNA=="
-#         self.api_version = api_version
-
-#         self.status_code = None
-#         self.status = {}
-
-#     # Måske overflødigt
-#     # def __str__(self):
-#     #     battery = self.get_battery_percentage()
-#     #     state = self.get_state_text()
-#     #     mode = self.get_mode_text()
-#     #     return (
-#     #         f"{self.name} ({self.amr_ip}) - "
-#     #         f"RasPi IP: {self.raspi_ip}, "
-#     #         f"Battery: {battery}, State: {state}, Mode: {mode}"
-#     #     )
-
-#     def update_status(self):
-#         """Fetch live status from the AMR API."""
-#         headers = {
-#             "accept": "application/json",
-#             "Accept-Language": "en_US"
-#         }
-
-#         if self.auth_token:
-#             headers["Authorization"] = f"Basic {self.auth_token}"
-
-#         url = f"http://{self.amr_ip}/api/{self.api_version}/status"
-#         response = requests.get(url, headers=headers, timeout=5)
-
-#         self.status_code = response.status_code
-#         response.raise_for_status()
-#         self.status = response.json()
-
-#     def get_battery_percentage(self):
-#         return self.status.get("battery_percentage")
-
-#     def get_position(self):
-#         return self.status.get("position", {})
-
-#     def get_pos_x(self):
-#         return self.get_position().get("x")
-
-#     def get_pos_y(self):
-#         return self.get_position().get("y")
-
-#     def get_state_text(self):
-#         return self.status.get("state_text")
-
-#     def get_mode_text(self):
-#         return self.status.get("mode_text")
-
-#     def get_errors(self):
-#         if not self.status: # Opdaterer status hvis den ikke har en endnu, da errors ellers ville være tom. Kan evt. fjernes
-#             self.update_status() 
-#         return self.status.get("errors", [])
+from data_grapher import DataGrapher
+from raspberry_pi_files.RaspberryPi import RaspberryPi
 
 class NetworkMonitorer:
     """Class to monitor the network and manage the fleet of AMRs."""
@@ -230,37 +165,38 @@ class NetworkMonitorer:
             self.save_amr_error(amr.id, amr.amr_ip, "NETWORK_MEASUREMENT_ERROR", str(e))
             return 0.0, 0.0, 100.0
 
-    def get_raspi_metrics(self, amr: AMR):
-        """
-        Henter signal-metrics fra Raspberry Pi.
+    # Note: vi skal i stedet bruge RaspberryPi.get_signal_metrics()
+    # def get_raspi_metrics(self, amr: AMR):
+    #     """
+    #     Henter signal-metrics fra Raspberry Pi.
 
-        Eksempel på JSON:
-        {
-            "rssi": -71.0,
-            "quality": 39.0,
-            "noise": None
-        }
+    #     Eksempel på JSON:
+    #     {
+    #         "rssi": -71.0,
+    #         "quality": 39.0,
+    #         "noise": None
+    #     }
 
-        RSSI bruges også som signal_strength.
-        Noise må gerne være None.
-        """
+    #     RSSI bruges også som signal_strength.
+    #     Noise må gerne være None.
+    #     """
 
-        url = f"http://{amr.raspi_ip}:5000/api/status"
+    #     url = f"http://{amr.raspi_ip}:5000/api/status"
 
-        headers = {
-        "Authorization": "Bearer YOUR_RASPBERRY_PI_TOKEN"
-        }
+    #     headers = {
+    #     "Authorization": "Bearer YOUR_RASPBERRY_PI_TOKEN"
+    #     }
 
-        response = requests.get(url, headers=headers, timeout=5)
-        response.raise_for_status()
+    #     response = requests.get(url, headers=headers, timeout=5)
+    #     response.raise_for_status()
 
-        metrics = response.json()
+    #     metrics = response.json()
 
-        rssi = metrics.get("rssi")
-        noise = metrics.get("noise")
-        signal_strength = rssi
+    #     rssi = metrics.get("rssi")
+    #     noise = metrics.get("noise")
+    #     signal_strength = rssi
 
-        return signal_strength, noise, rssi
+    #     return signal_strength, noise, rssi
 
     def monitor_one_amr(self, amr: AMR):
         """Poll one AMR, measure network/Wi-Fi, and save to database."""
@@ -292,7 +228,7 @@ class NetworkMonitorer:
             self.save_amr_error(amr.id, amr.amr_ip, "PING_ERROR", str(e))
 
         try:
-            signal_strength, noise, rssi = self.get_raspi_metrics(amr)
+            signal_strength, noise, rssi = RaspberryPi.get_signal_metrics(amr)
         except Exception as e:
             self.save_amr_error(amr.id, amr.amr_ip, "RASPI_METRICS_ERROR", str(e))
 
@@ -344,19 +280,6 @@ class NetworkMonitorer:
                 break
 
             time.sleep(interval_seconds)
-
-# Til GUI
-class DataGrapher:
-    """Class to graph the data collected from the AMRs and Raspberry Pi."""
-    def __init__(self):
-        self.data = []
-
-    def add_data(self, data_point):
-        self.data.append(data_point)
-
-    def display_data(self):
-        for data_point in self.data:
-            print(data_point)
 
 # til test
 # if __name__ == "__main__":
