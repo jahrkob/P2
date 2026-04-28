@@ -75,25 +75,10 @@ class AMR(InternetDevice):
         return self.status.get("mode_text")
 
     def get_errors(self):
+        if not self.status: # Opdaterer status hvis den ikke har en endnu, da errors ellers ville være tom. Kan evt. fjernes
+            self.update_status() 
         return self.status.get("errors", [])
 
-# Udkommenteret for nu
-# class RaspberryPi(InternetDevice):
-#     """Raspberry Pi class inheriting from InternetDevice."""
-
-#     def __init__(self, device_name, ip_address, status_code, status, raspberry_pi_model):
-#         super().__init__(device_name, ip_address)
-#         self.__status_code = status_code
-#         self.__status = status
-#         self.__raspberry_pi_model = raspberry_pi_model
-#         self.__rssi = None
-
-#     def __str__(self):
-#         return f"{super().__str__()} - Status Code: {self.__status_code}, Status: {self.__status}, Raspberry Pi Model: {self.__raspberry_pi_model}"
-    
-#     def get_rssi(self):
-#         return self.__rssi
-    
 class NetworkMonitorer:
     """Class to monitor the network and manage the fleet of AMRs."""
 
@@ -122,18 +107,18 @@ class NetworkMonitorer:
         conn.commit()
         conn.close()
 
-    def add_amr_to_database(self, id, ip, name, raspi_ip):
+    def add_amr_to_database(self, ip, name, raspi_ip):
         conn = sqlite3.connect(self.database)
         cursor = conn.cursor()
 
         cursor.execute(
-            "INSERT INTO amr (id, ip, name, raspi_ip) VALUES (?, ?, ?, ?)", 
-            (id, ip, name, raspi_ip))
+            "INSERT INTO amr (ip, name, raspi_ip) VALUES (?, ?, ?)", 
+            (ip, name, raspi_ip))
 
         conn.commit()
         conn.close()
 
-    def remove_amr_from_database(self, id):
+    def remove_amr_from_database(self, ip):
         """Removes an AMR from all tables in the database"""
         # Kan evt. opdeles i flere funktioner, så den sletter fra enkelte tables i stedet for hele databasen
         conn = sqlite3.connect(self.database)
@@ -142,9 +127,9 @@ class NetworkMonitorer:
         try: # try except ensures that data will only be deleted if it succeeds in deleting the specific AMR from ALL tables, else nothing is deleted
             cursor.execute("BEGIN")
 
-            cursor.execute("DELETE FROM amr WHERE id = ?", (id,))
-            cursor.execute("DELETE FROM data WHERE id = ?", (id,))
-            cursor.execute("DELETE FROM error WHERE id = ?", (id,))
+            cursor.execute("DELETE FROM amr WHERE ip = ?", (ip,))
+            cursor.execute("DELETE FROM data WHERE amr_ip = ?", (ip,))
+            cursor.execute("DELETE FROM error WHERE amr_ip = ?", (ip,))
         
             conn.commit()
 
