@@ -147,9 +147,8 @@ class GUI(ctk.CTk):
         # 2) Update overview + map
         self.show_graph(data)
 
-        # 3) Add all new errors to error log
-        for err in data["errors"]:
-            self.show_error(err)
+        # Reload errors from database instead
+        self.frames["errors"].load_errors()
 
         # 4) Print update message
         self.notification("Data updated")
