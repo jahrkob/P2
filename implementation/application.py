@@ -11,16 +11,7 @@ Classes:
 
 import sqlite3, json, time, subprocess, requests
 from datetime import datetime
-
-class InternetDevice:
-    """Base class for internet-connected devices."""
-
-    def __init__(self, device_name, ip):
-        self.device_name = device_name
-        self.ip = ip
-
-    def __str__(self):
-        return f"{self.device_name} ({self.ip})"
+from internet_device import InternetDevice
     
 class AMR(InternetDevice):
     """Autonomous Mobile Robot."""

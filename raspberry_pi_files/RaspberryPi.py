@@ -1,21 +1,11 @@
 import requests
 from typing import Optional, TypedDict
+from implementation.internet_device import InternetDevice
 
 class SignalData(TypedDict): # So pylance knows what each key in json has as value
     rssi: float
     signal_strength: float
     noise: Optional[float]
-
-class InternetDevice:
-    """Base class for all internet-connected devices."""
-
-    def __init__(self, device_name, ip):
-        self.device_name = device_name
-        self.ip = ip # ip address
-
-    def __str__(self):
-        return f"{self.device_name} ({self.ip})"
-
 
 class RaspberryPi(InternetDevice):
     def __init__(self, device_name, ip, port=80):
