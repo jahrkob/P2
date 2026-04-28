@@ -1,3 +1,4 @@
+# Til GUI
 class DataGrapher:
     """Class to graph the data collected from the AMRs and Raspberry Pi."""
     def __init__(self):
