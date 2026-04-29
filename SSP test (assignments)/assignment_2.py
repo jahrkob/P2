@@ -1,4 +1,13 @@
 def bubbleSort(arr):
+    """
+    Sort into descending order (in place)
+        also returns array
+        returns 'Array contains non number values' if string has non-numbers
+    """
+    for elem in arr: # added for black box testing
+        if type(elem) not in [int,float]:
+            return 'Array contains non number values'
+
     n = len(arr)
     # optimize code, so if the array is already sorted, it doesn't need
     # to go through the entire process
@@ -9,25 +18,28 @@ def bubbleSort(arr):
         # repeat one time more than needed.
         # Last i elements are already in place
         for j in range(0, n-i-1):
- 
+
             # traverse the array from 0 to n-i-1
             # Swap if the element found is greater
             # than the next element
             if arr[j +1 ] > arr[j]:
                 swapped = False
                 arr[j], arr[j + 1] = arr[j + 1], arr[j]
-         
+        
         if swapped:
             # if we haven't needed to make a single swap, we
             # can just exit the main loop.
-            return
+            return arr
+    return arr
+
  
- 
-# Driver code to test above
-arr = [64, 34, 25, 12, 22, 11, 90]
- 
-bubbleSort(arr)
- 
-print("Sorted array is:")
-for i in range(len(arr)):
-    print("% d" % arr[i], end=" ")
+
+if __name__ == '__main__':
+    # Driver code to test above
+    arr = [64, 34, 25, 12, 22, 11, 90]
+    
+    bubbleSort(arr)
+    
+    print("Sorted array is:")
+    for i in range(len(arr)):
+        print("% d" % arr[i], end=" ")
