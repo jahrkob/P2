@@ -12,16 +12,16 @@ if __name__ == "__main__":
         auth_token="Basic ZGlzdHJpYnV0b3I6NjJmMmYwZjFlZmYxMGQzMTUyYzk1ZjZmMDU5NjU3NmU0ODJiYjhlNDQ4MDY0MzNmNGNmOTI5NzkyODM0YjAxNA"
     )
 
-    # amr_mir3 = AMR(
-    #     ip="192.168.100.51", 
-    #     name="MiR 3", 
-    #     raspi_ip="192.168.x.x"
-    # )
+    amr_mir3 = AMR(
+        ip="192.168.100.51", 
+        name="MiR 3", 
+        raspi_ip="192.168.x.x"
+    )
 
     monitor.add_amr_to_database(
-        ip="192.168.100.51",
-        name="MiR 3",
-        raspi_ip="192.168.x.x"
+        ip=amr_mir3.ip,
+        name=amr_mir3.name,
+        raspi_ip=amr_mir3.raspi_ip
     )
 
     monitor.add_amr_to_database(
@@ -38,9 +38,8 @@ if __name__ == "__main__":
 
     print(monitor)
 
-    # # Én enkelt runde
-    # for amr in monitor.amr_list:
-    #     monitor.monitor_one_amr(amr=amr_1)
+    # Én enkelt runde
+    monitor.monitor_one_amr(amr=amr_mir3)
 
     # # Kontinuerlig monitorering
     # monitor.active_monitoring(interval_seconds=5)

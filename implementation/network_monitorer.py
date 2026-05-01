@@ -96,36 +96,43 @@ class NetworkMonitorer:
         #     conn.close()
 
     # Jeg antager at det bare er alt i "data" table i databasen. Kan nemt rettes, hvis nødvendigt.
-    def save_amr_data(self, id, amr_ip, rtt, jitter, packet_loss, signal_strength, noise, rssi, battery, pos_x, pos_y):
+    def save_amr_data(self, amr_ip, rtt, jitter, packet_loss, signal_strength, noise, rssi, battery, pos_x, pos_y):
         """Saves all network data to database"""
-        conn = sqlite3.connect(self.database)
-        cursor = conn.cursor()
+        with app.app_context():
+            db.session.add(db_spec.Data(amr_ip=amr_ip,rtt=rtt,jitter=jitter,packet_loss=packet_loss,signal_strength=signal_strength,noise=noise,rssi=rssi,battery=battery,pos_x=pos_x,pos_y=pos_y))
+            db.session.commit()
+        # conn = sqlite3.connect(self.database)
+        # cursor = conn.cursor()
 
-        timestamp = datetime.now().isoformat()
+        # timestamp = datetime.now().isoformat()
 
-        cursor.execute(
-            "INSERT INTO data (id, amr_ip, timestamp, rtt, jitter, packet_loss, signal_strength, noise, rssi, battery, pos_x, pos_y)",
-            (id, amr_ip, timestamp, rtt, jitter, packet_loss, signal_strength, noise, rssi, battery, pos_x, pos_y)
-        )
+        # cursor.execute(
+        #     "INSERT INTO data (id, amr_ip, timestamp, rtt, jitter, packet_loss, signal_strength, noise, rssi, battery, pos_x, pos_y)",
+        #     (id, amr_ip, timestamp, rtt, jitter, packet_loss, signal_strength, noise, rssi, battery, pos_x, pos_y)
+        # )
 
-        conn.commit()
-        conn.close()
+        # conn.commit()
+        # conn.close()
 
     # Jeg antager at det her er alt der skal i "error" table.
-    def save_amr_error(self, id, amr_ip, error, error_desc):
+    def save_amr_error(self, amr_ip, error, error_desc):
         """Saves status of amr to database"""
-        conn = sqlite3.connect(self.database)
-        cursor = conn.cursor()
+
+        with app.app_context():
+            db.session.add(db_spec.Error(amr_ip=amr_ip,error=error,error_desc=error_desc))
+            db.session.commit()
+        # conn = sqlite3.connect(self.database)
+        # cursor = conn.cursor()
         
-        timestamp = datetime.now().isoformat()
+        # timestamp = datetime.now().isoformat()
 
-        cursor.execute(
-            "INSERT INTO error (id, amr_ip, timestamp, error, error_desc)", 
-            (id, amr_ip, timestamp, error, error_desc)
-        )
+        # cursor.execute(
+        #     "INSERT INTO error (id, amr_ip, timestamp, error, error_desc)", 
+        #     (id, amr_ip, timestamp, error, error_desc)
+        # )
 
-        conn.commit()
-        conn.close()
+        # conn.commit()
+        # conn.close()
 
     # Skal laves når AMR class er færdig
     def save_api_errors(self, amr: AMR):
@@ -249,20 +256,19 @@ class NetworkMonitorer:
             self.save_api_errors(amr)
 
         except Exception as e:
-            self.save_amr_error(amr.id, amr.ip, "POLLING_ERROR", str(e))
+            self.save_amr_error(amr.ip, "POLLING_ERROR", str(e))
 
         try:
             rtt, jitter, packet_loss = self.measure_network_metrics(amr)
         except Exception as e:
-            self.save_amr_error(amr.id, amr.ip, "PING_ERROR", str(e))
+            self.save_amr_error(amr.ip, "PING_ERROR", str(e))
 
         try:
             signal_strength, noise, rssi = RaspberryPi.get_signal_metrics(amr)
         except Exception as e:
-            self.save_amr_error(amr.id, amr.ip, "RASPI_METRICS_ERROR", str(e))
+            self.save_amr_error(amr.ip, "RASPI_METRICS_ERROR", str(e))
 
         self.save_amr_data(
-            id=amr.id,
             amr_ip=amr.ip,
             rtt=rtt,
             jitter=jitter,
