@@ -41,7 +41,7 @@ class NetworkMonitorer:
             cursor.execute(
                 "INSERT INTO amr (ip, name, raspi_ip) VALUES (?, ?, ?)", 
                 (ip, name, raspi_ip))
-            self.amr_list += AMR(ip,name,raspi_ip) # add to list in memory
+            self.amr_list.append(AMR(ip,name,raspi_ip)) # add to list in memory
         except sqlite3.IntegrityError as e:
             print(str(e))
 
