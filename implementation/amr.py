@@ -59,23 +59,23 @@ class AMR(InternetDevice):
         else:
             return(f"Error {response.status_code}: {response.text}")
     
-    # status funktionen kan evt. se således ud. Vi skal lige finde ud af om vi bruge get eller update
-    def update_status(self):
-        """Fetch live status from the AMR API."""
-        headers = {
-            "accept": "application/json",
-            "Accept-Language": "en_US"
-        }
+    # # status funktionen kan evt. se således ud. Vi skal lige finde ud af om vi bruge get eller update
+    # def update_status(self):
+    #     """Fetch live status from the AMR API."""
+    #     # headers = {
+    #     #     "accept": "application/json",
+    #     #     "Accept-Language": "en_US"
+    #     # }
 
-        if self.auth_token:
-            headers["Authorization"] = f"Basic {self.auth_token}"
+    #     # if self.auth_token:
+    #     #     headers["Authorization"] = f"Basic {self.auth_token}"
 
-        url = f"http://{self.ip}/api/{self.api_version}/status"
-        response = requests.get(url, headers=headers, timeout=5)
+    #     url = f"http://{self.ip}/api/{self.api_version}/status"
+    #     response = requests.get(url, headers=self.headers, timeout=5)
 
-        self.status_code = response.status_code
-        response.raise_for_status()
-        self.status = response.json()
+    #     self.status_code = response.status_code
+    #     response.raise_for_status()
+    #     self.status = response.json()
     
     def get_map(self):
         response = requests.get(f"{self.base_url}/map", headers=self.headers)

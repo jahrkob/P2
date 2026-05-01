@@ -161,7 +161,7 @@ class NetworkMonitorer:
                 ["ping", "-c", "4", amr.ip],
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10000
             )
 
             output = result.stdout + "\n" + result.stderr
@@ -248,11 +248,11 @@ class NetworkMonitorer:
         pos_y = None
 
         try:
-            amr.update_status() # vi skal finde ud af om vi bruge get eller update
-            amr.get_status()
-            battery = amr.get_battery_percentage()
-            pos_x = amr.get_pos_x()
-            pos_y = amr.get_pos_y()
+            #amr.update_status() # vi skal finde ud af om vi bruge get eller update
+            # battery = amr.get_battery_percentage()
+            # pos_x = amr.get_pos_x()
+            # pos_y = amr.get_pos_y()
+            status = amr.get_status()
             self.save_api_errors(amr)
 
         except Exception as e:
@@ -275,20 +275,21 @@ class NetworkMonitorer:
             packet_loss=packet_loss,
             signal_strength=signal_strength,
             noise=noise,
-            rssi=rssi,
-            battery=battery,
-            pos_x=pos_x,
-            pos_y=pos_y
+            rssi=None,
+            battery=status['battery_percentage'],
+            pos_x=status['position']['x'],
+            pos_y=status['position']['x']
         )
 
         print(
             f"{amr.name} | "
             f"Battery: {battery} | "
-            f"Pos: ({pos_x}, {pos_y}) | "
+            f"Pos: ({status['position']['x']}, {status['position']['y']}) | "
             f"RTT: {rtt} ms | "
             f"Jitter: {jitter} ms | "
             f"Packet loss: {packet_loss}% | "
-            f"RSSI: {rssi}"
+            f"RSSI: {rssi} | "
+            f"Battery: {status['battery_percentage']}"
         )
 
     def active_monitoring(self, interval_seconds=5, cycles=None, reload_from_database=True):
