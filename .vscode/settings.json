@@ -1,3 +1,4 @@
 {
-    "liveServer.settings.multiRootWorkspaceName": "P2"
+    "liveServer.settings.multiRootWorkspaceName": "P2",
+    "python-envs.defaultEnvManager": "ms-python.python:venv"
 }
