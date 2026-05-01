@@ -12,28 +12,28 @@ if __name__ == "__main__":
       db.create_all() # create new tables in database.db
 
     monitor = NetworkMonitorer(
-        fleet_manager_ip="192.168.1.1",
+        fleet_manager_ip="192.168.100.123",
         database="database_files\instance\database.db",
         auth_token="Basic ZGlzdHJpYnV0b3I6NjJmMmYwZjFlZmYxMGQzMTUyYzk1ZjZmMDU5NjU3NmU0ODJiYjhlNDQ4MDY0MzNmNGNmOTI5NzkyODM0YjAxNA"
     )
 
-    amr_1 = AMR(
-        ip="192.168.0.216", 
-        name="AMR TEST OBJECT 1", 
-        raspi_ip="192.168.1.136"
-    )
+    # amr_mir3 = AMR(
+    #     ip="192.168.100.51", 
+    #     name="MiR 3", 
+    #     raspi_ip="192.168.x.x"
+    # )
 
     monitor.add_amr_to_database(
-        ip="192.168.0.146",
-        name="AMR TEST OBJECT 2",
-        raspi_ip="192.168.1.101"
+        ip="192.168.100.51",
+        name="MiR 3",
+        raspi_ip="192.168.x.x"
     )
 
     print(monitor)
 
-    # Én enkelt runde
-    for amr in monitor.amr_list:
-        monitor.monitor_one_amr(amr=amr_1)
+    # # Én enkelt runde
+    # for amr in monitor.amr_list:
+    #     monitor.monitor_one_amr(amr=amr_1)
 
-    # Kontinuerlig monitorering
-    monitor.active_monitoring(interval_seconds=5)
+    # # Kontinuerlig monitorering
+    # monitor.active_monitoring(interval_seconds=5)
