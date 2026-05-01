@@ -94,28 +94,28 @@ class AMR(InternetDevice):
         else:
             return(f"Error {response.status_code}: {response.text}")
         
-    def get_battery_percentage(self):
-        return self.status.get("battery_percentage")
+    # def get_battery_percentage(self):
+    #     return self.status.get("battery_percentage")
 
-    def get_position(self):
-        return self.status.get("position", {})
+    # def get_position(self):
+    #     return self.status.get("position", {})
 
-    def get_pos_x(self):
-        return self.get_position().get("x")
+    # def get_pos_x(self):
+    #     return self.get_position().get("x")
 
-    def get_pos_y(self):
-        return self.get_position().get("y")
+    # def get_pos_y(self):
+    #     return self.get_position().get("y")
 
-    def get_state_text(self):
-        return self.status.get("state_text")
+    # def get_state_text(self):
+    #     return self.status.get("state_text")
 
-    def get_mode_text(self):
-        return self.status.get("mode_text")
+    # def get_mode_text(self):
+    #     return self.status.get("mode_text")
 
-    def get_errors(self):
-        if not self.status: # Opdaterer status hvis den ikke har en endnu, da errors ellers ville være tom. Kan evt. fjernes
-            self.update_status() 
-        return self.status.get("errors", [])
+    # def get_errors(self):
+    #     if not self.status: # Opdaterer status hvis den ikke har en endnu, da errors ellers ville være tom. Kan evt. fjernes
+    #         self.update_status() 
+    #     return self.status.get("errors", [])
 
 if __name__ == "__main__":
     amr = AMR("192.168.100.51")
