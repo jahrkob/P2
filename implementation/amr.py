@@ -4,13 +4,14 @@ from internet_device import InternetDevice
 class AMR(InternetDevice):
     """Autonomous Mobile Robot."""
 
-    def __init__(self, ip, name, raspi_ip):
+    def __init__(self, ip, name, raspi_ip, auth_token):
         super().__init__(ip)
         self.name = name
         self.raspi_ip = raspi_ip
+        self.auth_token = auth_token
         self.base_url = f"http://{ip}/api/v2.0.0"
         self.headers = {
-            "Authorization": "Basic ZGlzdHJpYnV0b3I6NjJmMmYwZjFlZmYxMGQzMTUyYzk1ZjZmMDU5NjU3NmU0ODJiYjhlNDQ4MDY0MzNmNGNmOTI5NzkyODM0YjAxNA==",
+            "Authorization": auth_token,
             "Accept-Language": "en-US",
             "accept": "application/json"
         }
