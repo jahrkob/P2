@@ -1,9 +1,12 @@
-import sqlite3, json, time, subprocess, requests
+import sqlite3, json, time, subprocess, requests, sqlalchemy
 from datetime import datetime
 from internet_device import InternetDevice # | Den her er nok overflødig
 from amr import AMR
 from data_grapher import DataGrapher
 from raspberry_pi_files.RaspberryPi import RaspberryPi
+
+from database_files.Database_specification import app, db
+import database_files.Database_specification as db_spec
 
 class NetworkMonitorer:
     """Class to monitor the network and manage the fleet of AMRs."""
@@ -23,60 +26,74 @@ class NetworkMonitorer:
         )
 
     def load_amr_database(self):
-        conn = sqlite3.connect(self.database)
-        cursor = conn.cursor()
+        with app.app_context():
+            return db.session.query(db_spec.AMR).all()
+        # conn = sqlite3.connect(self.database)
+        # cursor = conn.cursor()
 
-        cursor.execute("SELECT * FROM amr")
+        # cursor.execute("SELECT * FROM amr")
 
-        self.amr_list = cursor.fetchall()
+        # self.amr_list = cursor.fetchall()
 
-        conn.commit()
-        conn.close()
+        # conn.commit()
+        # conn.close()
 
     def add_amr_to_database(self, ip, name, raspi_ip):
-        conn = sqlite3.connect(self.database)
-        cursor = conn.cursor()
+        # conn = sqlite3.connect(self.database)
+        # cursor = conn.cursor()
+
 
         try:
-            cursor.execute(
-                "INSERT INTO amr (ip, name, raspi_ip) VALUES (?, ?, ?)", 
-                (ip, name, raspi_ip))
-            self.amr_list.append(AMR(ip,name,raspi_ip)) # add to list in memory
-        except sqlite3.IntegrityError as e:
-            print(str(e))
+            with app.app_context():
+                db.session.add(db_spec.AMR(ip=ip,name=name,raspi_ip=raspi_ip))
+                db.session.commit()
+            # cursor.execute(
+            #     "INSERT INTO amr (ip, name, raspi_ip) VALUES (?, ?, ?)", 
+            #     (ip, name, raspi_ip))
+            # self.amr_list.append(AMR(ip=ip,name=name,raspi_ip=raspi_ip)) # add to list in memory
+        except sqlalchemy.exc.IntegrityError as e:
+            print(str(e).replace('\n', ' '))
 
         
 
-        conn.commit()
-        conn.close()
+        # conn.commit()
+        # conn.close()
 
     def remove_amr_from_database(self, ip):
         """Removes an AMR from all tables in the database"""
         # Kan evt. opdeles i flere funktioner, så den sletter fra enkelte tables i stedet for hele databasen
-        conn = sqlite3.connect(self.database)
-        cursor = conn.cursor()
+        # conn = sqlite3.connect(self.database)
+        # cursor = conn.cursor()
 
         try: # try except ensures that data will only be deleted if it succeeds in deleting the specific AMR from ALL tables, else nothing is deleted
-            cursor.execute("BEGIN")
+            with app.app_context():
+                delete_user = db.session.query(db_spec.AMR).filter_by(ip=ip).first()
+                if delete_user:
+                    db.session.delete(delete_user)
+                    db.session.commit()
+                else:
+                    print(f'AMR with IP={ip} does not exist - cannot be deleted')
 
-            cursor.execute("DELETE FROM amr WHERE ip = ?", (ip,))
-            cursor.execute("DELETE FROM data WHERE amr_ip = ?", (ip,))
-            cursor.execute("DELETE FROM error WHERE amr_ip = ?", (ip,))
+        #     cursor.execute("BEGIN")
+
+        #     cursor.execute("DELETE FROM amr WHERE ip = ?", (ip,))
+        #     cursor.execute("DELETE FROM data WHERE amr_ip = ?", (ip,))
+        #     cursor.execute("DELETE FROM error WHERE amr_ip = ?", (ip,))
         
-            conn.commit()
+        #     conn.commit()
 
-            ##### THIS NOT WORK #####
-            for i, obj in enumerate(self.amr_list):
-                print(obj)
-                if obj.ip == ip:
-                    self.amr_list.pop(i)
+        #     ##### THIS NOT WORK #####
+        #     for i, obj in enumerate(self.amr_list):
+        #         print(obj)
+        #         if obj.ip == ip:
+        #             self.amr_list.pop(i)
 
         except Exception as e:
-            conn.rollback()
+            # conn.rollback()
             print("Error: ", e)
         
-        finally:
-            conn.close()
+        # finally:
+        #     conn.close()
 
     # Jeg antager at det bare er alt i "data" table i databasen. Kan nemt rettes, hvis nødvendigt.
     def save_amr_data(self, id, amr_ip, rtt, jitter, packet_loss, signal_strength, noise, rssi, battery, pos_x, pos_y):
