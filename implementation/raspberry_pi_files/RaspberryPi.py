@@ -32,10 +32,11 @@ class RaspberryPi(InternetDevice):
 
         return api_response.json(), rssi, signal_strength, noise
 
-##### TESTING #####
-name = 'testing_rasp' # can be whatever
-ip = '192.168.200.243'
-port = 5000 # Only 5000 for testing in reality should be 80
-rasp = RaspberryPi(name,ip,port)
+if __name__ == "__main__":
+    ##### TESTING #####
+    name = 'testing_rasp' # can be whatever
+    ip = '192.168.200.243'
+    port = 5000 # Only 5000 for testing in reality should be 80
+    rasp = RaspberryPi(name,ip,port)
 
-print(rasp.get_signal_metrics())
+    print(rasp.get_signal_metrics())

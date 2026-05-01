@@ -113,7 +113,7 @@ class NetworkMonitorer:
                 error_name = "API_ERROR"
                 error_desc = str(err)
 
-            self.save_amr_error(amr.id, amr.amr_ip, error_name, error_desc)
+            self.save_amr_error(amr.id, amr.ip, error_name, error_desc)
 
     def measure_network_metrics(self, amr: AMR): # Der skal laves amr objekter med AMR classen
         """
@@ -162,7 +162,7 @@ class NetworkMonitorer:
             return rtt, jitter, packet_loss
 
         except Exception as e:
-            self.save_amr_error(amr.id, amr.amr_ip, "NETWORK_MEASUREMENT_ERROR", str(e))
+            self.save_amr_error(amr.id, amr.ip, "NETWORK_MEASUREMENT_ERROR", str(e))
             return 0.0, 0.0, 100.0
 
     # Note: vi skal i stedet bruge RaspberryPi.get_signal_metrics()
@@ -220,21 +220,21 @@ class NetworkMonitorer:
             self.save_api_errors(amr)
 
         except Exception as e:
-            self.save_amr_error(amr.id, amr.amr_ip, "POLLING_ERROR", str(e))
+            self.save_amr_error(amr.id, amr.ip, "POLLING_ERROR", str(e))
 
         try:
             rtt, jitter, packet_loss = self.measure_network_metrics(amr)
         except Exception as e:
-            self.save_amr_error(amr.id, amr.amr_ip, "PING_ERROR", str(e))
+            self.save_amr_error(amr.id, amr.ip, "PING_ERROR", str(e))
 
         try:
             signal_strength, noise, rssi = RaspberryPi.get_signal_metrics(amr)
         except Exception as e:
-            self.save_amr_error(amr.id, amr.amr_ip, "RASPI_METRICS_ERROR", str(e))
+            self.save_amr_error(amr.id, amr.ip, "RASPI_METRICS_ERROR", str(e))
 
         self.save_amr_data(
             id=amr.id,
-            amr_ip=amr.amr_ip,
+            amr_ip=amr.ip,
             rtt=rtt,
             jitter=jitter,
             packet_loss=packet_loss,

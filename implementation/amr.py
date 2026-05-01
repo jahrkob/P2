@@ -4,10 +4,8 @@ from internet_device import InternetDevice
 class AMR(InternetDevice):
     """Autonomous Mobile Robot."""
 
-    def __init__(self, id, ip, amr_ip, name, raspi_ip):
+    def __init__(self, ip, name, raspi_ip):
         super().__init__(ip)
-        self.id = id
-        self.amr_ip = amr_ip
         self.name = name
         self.raspi_ip = raspi_ip
         self.base_url = f"http://{ip}/api/v2.0.0"
@@ -72,7 +70,7 @@ class AMR(InternetDevice):
         if self.auth_token:
             headers["Authorization"] = f"Basic {self.auth_token}"
 
-        url = f"http://{self.amr_ip}/api/{self.api_version}/status"
+        url = f"http://{self.ip}/api/{self.api_version}/status"
         response = requests.get(url, headers=headers, timeout=5)
 
         self.status_code = response.status_code
@@ -96,28 +94,28 @@ class AMR(InternetDevice):
         else:
             return(f"Error {response.status_code}: {response.text}")
         
-    def get_battery_percentage(self):
-        return self.status.get("battery_percentage")
+    # def get_battery_percentage(self):
+    #     return self.status.get("battery_percentage")
 
-    def get_position(self):
-        return self.status.get("position", {})
+    # def get_position(self):
+    #     return self.status.get("position", {})
 
-    def get_pos_x(self):
-        return self.get_position().get("x")
+    # def get_pos_x(self):
+    #     return self.get_position().get("x")
 
-    def get_pos_y(self):
-        return self.get_position().get("y")
+    # def get_pos_y(self):
+    #     return self.get_position().get("y")
 
-    def get_state_text(self):
-        return self.status.get("state_text")
+    # def get_state_text(self):
+    #     return self.status.get("state_text")
 
-    def get_mode_text(self):
-        return self.status.get("mode_text")
+    # def get_mode_text(self):
+    #     return self.status.get("mode_text")
 
-    def get_errors(self):
-        if not self.status: # Opdaterer status hvis den ikke har en endnu, da errors ellers ville være tom. Kan evt. fjernes
-            self.update_status() 
-        return self.status.get("errors", [])
+    # def get_errors(self):
+    #     if not self.status: # Opdaterer status hvis den ikke har en endnu, da errors ellers ville være tom. Kan evt. fjernes
+    #         self.update_status() 
+    #     return self.status.get("errors", [])
 
 if __name__ == "__main__":
     amr = AMR("192.168.100.51")
