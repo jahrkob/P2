@@ -1,122 +1,93 @@
-import requests
+import json
+import socket
+from urllib.error import HTTPError, URLError
+from urllib.request import ProxyHandler, Request, build_opener
+
 from internet_device import InternetDevice
+
 
 class AMR(InternetDevice):
     """Autonomous Mobile Robot."""
 
-    def __init__(self, ip, name, raspi_ip, auth_token):
+    def __init__(self, ip, name="", raspi_ip="", auth_token=None, api_version="v2.0.0"):
         super().__init__(ip)
         self.name = name
         self.raspi_ip = raspi_ip
         self.auth_token = auth_token
-        self.base_url = f"http://{ip}/api/v2.0.0"
+        self.api_version = api_version
+        self.base_url = f"http://{ip}/api/{api_version}"
+        self.status_code = None
+        self.status = {}
         self.headers = {
             "Authorization": auth_token,
             "Accept-Language": "en-US",
-            "accept": "application/json"
+            "accept": "application/json",
         }
 
-    # __init__ kan evt. se sådan ud hvis update status skal bruges
-    # def __init__(self, id, amr_ip, name, raspi_ip, api_version="v2.0.0"):
-    #     super().__init__(name, amr_ip)
-    #     self.id = id
-    #     self.amr_ip = amr_ip
-    #     self.name = name
-    #     self.raspi_ip = raspi_ip
-    #     self.auth_token = "ZGlzdHJpYnV0b3I6NjjmMmYwZjFlZmYxMGQzMTUyYzk1ZjZmMDU5NjU3NmU0ODJiYjhINDQ4MDY0MzNmNGNmOTI5NzkyODM0YjAxNA=="
-    #     self.api_version = api_version
+    def __str__(self):
+        return f"{self.name or 'AMR'} ({self.ip}) - RasPi: {self.raspi_ip or 'ukendt'}"
 
-    #     self.status_code = None
-    #     self.status = {}
+    def _request_json(self, path, timeout=2):
+        headers = {key: value for key, value in self.headers.items() if value}
+        request = Request(f"{self.base_url}{path}", headers=headers)
 
-    # Måske overflødigt
-    # def __str__(self):
-    #     battery = self.get_battery_percentage()
-    #     state = self.get_state_text()
-    #     mode = self.get_mode_text()
-    #     return (
-    #         f"{self.name} ({self.amr_ip}) - "
-    #         f"RasPi IP: {self.raspi_ip}, "
-    #         f"Battery: {battery}, State: {state}, Mode: {mode}"
-    #     )
+        try:
+            with socket.create_connection((self.ip, 80), timeout=1):
+                pass
+            opener = build_opener(ProxyHandler({}))
+            with opener.open(request, timeout=timeout) as response:
+                self.status_code = response.status
+                body = response.read().decode("utf-8")
+                return json.loads(body) if body else {}
+        except HTTPError as e:
+            self.status_code = e.code
+            body = e.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"AMR API returned HTTP {e.code}: {body}") from e
+        except (TimeoutError, socket.timeout) as e:
+            raise RuntimeError(f"Timed out while contacting AMR API at {self.ip}") from e
+        except OSError as e:
+            raise RuntimeError(f"Could not connect to AMR API at {self.ip}: {e}") from e
+        except URLError as e:
+            raise RuntimeError(f"Could not reach AMR API at {self.ip}: {e.reason}") from e
 
     def get_status(self):
-        response = requests.get(f"{self.base_url}/status", headers=self.headers)
+        self.status = self._request_json("/status")
+        return self.status
 
-        if response.status_code == 200:
-            data = response.json()
-
-            # map_id er måske ikke så vigtig
-            '''
-            print("Position:", data["position"])
-            print("Battery %:", data["battery_percentage"])
-            print("State:", data["state_text"])
-            print("Errors:", data["errors"])
-            print("robot_name:", data["robot_name"])
-            print("map_id", data["map_id"])
-            '''
-
-            return data
-        else:
-            return(f"Error {response.status_code}: {response.text}")
-    
-    # status funktionen kan evt. se således ud. Vi skal lige finde ud af om vi bruge get eller update
     def update_status(self):
         """Fetch live status from the AMR API."""
-        headers = {
-            "accept": "application/json",
-            "Accept-Language": "en_US"
-        }
+        return self.get_status()
 
-        if self.auth_token:
-            headers["Authorization"] = f"Basic {self.auth_token}"
-
-        url = f"http://{self.ip}/api/{self.api_version}/status"
-        response = requests.get(url, headers=headers, timeout=5)
-
-        self.status_code = response.status_code
-        response.raise_for_status()
-        self.status = response.json()
-    
     def get_map(self):
-        response = requests.get(f"{self.base_url}/map", headers=self.headers)
+        return self._request_json("/map")
 
-        if response.status_code == 200:
-            map = response.json()
-            
-            '''
-            print("url:", map["url"])
-            print("guid:", map["guid"])
-            print("name:", map["name"])
-            '''
+    def get_battery_percentage(self):
+        return self.status.get("battery_percentage")
 
-            return map
+    def get_position(self):
+        return self.status.get("position", {}) or {}
 
-        else:
-            return(f"Error {response.status_code}: {response.text}")
-        
-    # def get_battery_percentage(self):
-    #     return self.status.get("battery_percentage")
+    def get_pos_x(self):
+        return self.get_position().get("x")
 
-    # def get_position(self):
-    #     return self.status.get("position", {})
+    def get_pos_y(self):
+        return self.get_position().get("y")
 
-    # def get_pos_x(self):
-    #     return self.get_position().get("x")
+    def get_state_text(self):
+        return self.status.get("state_text")
 
-    # def get_pos_y(self):
-    #     return self.get_position().get("y")
+    def get_mode_text(self):
+        return self.status.get("mode_text")
 
-    # def get_state_text(self):
-    #     return self.status.get("state_text")
+    def get_robot_name(self):
+        return self.status.get("robot_name")
 
-    # def get_mode_text(self):
-    #     return self.status.get("mode_text")
+    def get_map_id(self):
+        return self.status.get("map_id")
 
-    # def get_errors(self):
-    #     if not self.status: # Opdaterer status hvis den ikke har en endnu, da errors ellers ville være tom. Kan evt. fjernes
-    #         self.update_status() 
-    #     return self.status.get("errors", [])
+    def get_errors(self):
+        return self.status.get("errors", []) or []
+
 
 if __name__ == "__main__":
     amr = AMR("192.168.100.51")

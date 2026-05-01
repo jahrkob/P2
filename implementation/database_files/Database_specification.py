@@ -3,9 +3,12 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_restful import Resource, Api, reqparse, fields, marshal_with, abort
 import sqlalchemy as sql
 from datetime import datetime
+from pathlib import Path
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+database_path = Path(__file__).resolve().parent / "instance" / "database.db"
+database_path.parent.mkdir(parents=True, exist_ok=True)
+app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{database_path.as_posix()}"
 db = SQLAlchemy(app)
 #api = Api(app) # dont need API anymore since it runs on the fleet managers device
 
@@ -19,6 +22,10 @@ class Data(db.Model):
     amr_ip = sql.Column(sql.Integer,sql.ForeignKey('amr.ip'), nullable=False)
     amr = db.relationship('AMR', back_populates='data')
     timestamp = sql.Column(sql.DateTime, default=datetime.now, nullable=False)
+    robot_name = sql.Column(sql.String(80))
+    state_text = sql.Column(sql.String(80))
+    mode_text = sql.Column(sql.String(80))
+    map_id = sql.Column(sql.String(80))
     rtt = sql.Column(sql.Float)
     jitter = sql.Column(sql.Float)
     packet_loss = sql.Column(sql.Float)
