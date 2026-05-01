@@ -8,7 +8,7 @@ from raspberry_pi_files.RaspberryPi import RaspberryPi
 class NetworkMonitorer:
     """Class to monitor the network and manage the fleet of AMRs."""
 
-    def __init__(self, fleet_manager_ip, database = "database.db", auth_token = None):
+    def __init__(self, fleet_manager_ip, database, auth_token = None):
         self.fleet_manager_ip = fleet_manager_ip
         self.database = database
         self.auth_token = auth_token
@@ -16,7 +16,7 @@ class NetworkMonitorer:
         self.load_amr_database()
 
     def __str__(self):
-        amr_info = "\n".join(str(amr) for amr in self.amr_list)
+        amr_info = "\n".join([str(amr) for amr in self.amr_list])
         return (
             f"Fleet Manager IP: {self.fleet_manager_ip}\n\n"
             f"AMRs:\n{amr_info if amr_info else 'Ingen AMR fundet'}"
@@ -37,9 +37,15 @@ class NetworkMonitorer:
         conn = sqlite3.connect(self.database)
         cursor = conn.cursor()
 
-        cursor.execute(
-            "INSERT INTO amr (ip, name, raspi_ip) VALUES (?, ?, ?)", 
-            (ip, name, raspi_ip))
+        try:
+            cursor.execute(
+                "INSERT INTO amr (ip, name, raspi_ip) VALUES (?, ?, ?)", 
+                (ip, name, raspi_ip))
+            self.amr_list += AMR(ip,name,raspi_ip) # add to list in memory
+        except sqlite3.IntegrityError as e:
+            print(str(e))
+
+        
 
         conn.commit()
         conn.close()
@@ -58,6 +64,11 @@ class NetworkMonitorer:
             cursor.execute("DELETE FROM error WHERE amr_ip = ?", (ip,))
         
             conn.commit()
+
+            for i, obj in enumerate(self.amr_list):
+                print(obj)
+                if obj.ip == ip:
+                    self.amr_list.pop(i)
 
         except Exception as e:
             conn.rollback()

@@ -4,7 +4,7 @@ from data_grapher import *
 from internet_device import *
 from raspberry_pi_files.RaspberryPi import *
 
-from database_files.Database_specification import app,db
+from database_files.Database_specification import app, db
 
 if __name__ == "__main__":
     with app.app_context():
@@ -13,7 +13,7 @@ if __name__ == "__main__":
 
     monitor = NetworkMonitorer(
         fleet_manager_ip="192.168.100.123",
-        database="database_files\instance\database.db",
+        database="implementation/database_files/instance/database.db",
         auth_token="Basic ZGlzdHJpYnV0b3I6NjJmMmYwZjFlZmYxMGQzMTUyYzk1ZjZmMDU5NjU3NmU0ODJiYjhlNDQ4MDY0MzNmNGNmOTI5NzkyODM0YjAxNA"
     )
 
@@ -28,6 +28,18 @@ if __name__ == "__main__":
         name="MiR 3",
         raspi_ip="192.168.x.x"
     )
+
+    monitor.add_amr_to_database(
+        ip="192.168.100.52",
+        name="MiR 4",
+        raspi_ip="192.168.x.y"
+    )
+
+    #monitor.save_amr_data()
+
+    print(monitor)
+
+    monitor.remove_amr_from_database("192.168.100.52")
 
     print(monitor)
 
