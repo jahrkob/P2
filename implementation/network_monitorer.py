@@ -65,6 +65,7 @@ class NetworkMonitorer:
         
             conn.commit()
 
+            ##### THIS NOT WORK #####
             for i, obj in enumerate(self.amr_list):
                 print(obj)
                 if obj.ip == ip:
