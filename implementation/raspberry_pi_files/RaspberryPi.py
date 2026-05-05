@@ -1,6 +1,7 @@
 import requests
 from typing import Optional, TypedDict
-from internet_device import InternetDevice
+# from internet_device import InternetDevice
+from implementation.internet_device import InternetDevice
 
 class SignalData(TypedDict): # So pylance knows what each key in json has as value
     rssi: float
@@ -35,7 +36,7 @@ class RaspberryPi(InternetDevice):
 if __name__ == "__main__":
     ##### TESTING #####
     name = 'testing_rasp' # can be whatever
-    ip = '192.168.200.243'
+    ip = '192.168.0.95'
     port = 5000 # Only 5000 for testing in reality should be 80
     rasp = RaspberryPi(name,ip,port)
 
