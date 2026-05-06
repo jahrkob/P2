@@ -1,5 +1,6 @@
 from Database_specification import db, app, Data, AMR, Error
 import random
+from datetime import datetime, timedelta
 
 """
 
@@ -47,9 +48,17 @@ with app.app_context():
         db.session.add(new_amr)
     db.session.commit()
 
+    # Create test data with timestamps spread across 1 hour
+    base_time = datetime.now() - timedelta(hours=1)
+    
     for i in range(1000):
+        # Spread timestamps across 60 minutes (3600 seconds)
+        time_offset = timedelta(seconds=(i / 1000) * 3600)
+        timestamp = base_time + time_offset
+        
         new_data = Data(
             amr_ip=AMR_list[i%253].ip,
+            timestamp=timestamp,
             rtt=random.random()*40,
             jitter=random.random()*10,
             packet_loss=random.random()*0.1,
