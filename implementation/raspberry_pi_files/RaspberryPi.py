@@ -4,7 +4,7 @@ from internet_device import InternetDevice
 
 class SignalData(TypedDict): # So pylance knows what each key in json has as value
     rssi: float
-    signal_strength: float
+    quality: float
     noise: Optional[float]
 
 class RaspberryPi(InternetDevice):

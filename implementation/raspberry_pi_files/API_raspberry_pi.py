@@ -2,6 +2,7 @@ from flask import Flask, request
 from flask_restful import Resource, Api, reqparse, fields, marshal_with, abort
 from datetime import datetime
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token
+import doctest,os,sys
 
 interface_to_monitor = 'wlan0'
 
@@ -32,6 +33,13 @@ class Status(Resource):
 
 
 def get_wireless_info(interface="wlan0"):
+
+    isfile = os.path.isfile("/proc/net/wireless")
+
+    if not isfile:
+        raise missingSystemFiles(f'"/proc/net/wireless" does not exist. Are you on linux? current operating system: {sys.platform}')
+
+
     with open("/proc/net/wireless") as f:
         lines = f.readlines()
 
@@ -60,9 +68,15 @@ api.add_resource(Status, '/api/status')
 def home():
     return '<h1>Flask REST API</h1>'
 
-
+class missingSystemFiles(Exception):
+    """
+    For when an essential file unique to an operating system is missing. Could be caused by a non-supported operating system being used
+    """
+    pass
 
 if __name__ == '__main__':
+    doctest.testmod()
+
     @app.before_request
     def log_request_info():
         print("----- Incoming Request -----")
