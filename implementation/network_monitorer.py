@@ -234,7 +234,7 @@ class NetworkMonitorer:
 
     #     return signal_strength, noise, rssi
 
-    def monitor_one_amr(self, amr: AMR):
+    def monitor_one_amr(self, amr: AMR): # Fix this - We get JSON with data not tuple
         """Poll one AMR, measure network/Wi-Fi, and save to database."""
 
         rtt = None
@@ -264,7 +264,7 @@ class NetworkMonitorer:
             self.save_amr_error(amr.ip, "PING_ERROR", str(e))
 
         try:
-            signal_strength, noise, rssi = RaspberryPi.get_signal_metrics(amr)
+            signal_strength, noise, rssi = RaspberryPi.get_signal_metrics(amr) # this line
         except Exception as e:
             self.save_amr_error(amr.ip, "RASPI_METRICS_ERROR", str(e))
 
