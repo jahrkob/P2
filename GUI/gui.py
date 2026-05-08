@@ -6,10 +6,11 @@ from functools import partial
 
 import sys
 cur_parent_dirs = sys.path[0].split('\\')
-parent_dir_index = cur_parent_dirs.index("P2")+1
-sys.path.append("\\".join(cur_parent_dirs[0:parent_dir_index])) # allows imports from P2 folder
+parent_dir_index = cur_parent_dirs.index("P2")
+sys.path.append("\\".join(cur_parent_dirs[0:parent_dir_index+1])) # allows imports from P2 folder
 
 from implementation.amr import AMR
+import re
 
 #sys.path.append(os.path.abspath("/home/el/foo4/stuff"))
 #from implementation.amr import AMR
@@ -162,23 +163,67 @@ class GUI(ctk.CTk):
 # ==================================================
 AMR_list = []
 
-class status_box(ctk.CTkTextbox):
-    def __init__(self, master, width = 80, height = 46, corner_radius = None, border_width = None, border_spacing = 3, bg_color = "transparent", fg_color = None, border_color = None, text_color = None, scrollbar_button_color = None, scrollbar_button_hover_color = None, font = None, activate_scrollbars = True, **kwargs):
+ipv4_pattern = re.compile(
+    r"^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$"
+)
+
+def is_valid_ipv4(ip):
+    return bool(ipv4_pattern.match(ip))
+
+class MyTextBox(ctk.CTkTextbox):
+    def __init__(self, master, width = 200, height = 200, corner_radius = None, border_width = None, border_spacing = 3, bg_color = "transparent", fg_color = None, border_color = None, text_color = None, scrollbar_button_color = None, scrollbar_button_hover_color = None, font = None, activate_scrollbars = True, **kwargs):
         super().__init__(master, width, height, corner_radius, border_width, border_spacing, bg_color, fg_color, border_color, text_color, scrollbar_button_color, scrollbar_button_hover_color, font, activate_scrollbars, **kwargs)
-        self.insert(0,"offline")
+        self.tag_config("center", justify="center")
+
+    def write(self, text):
+        self.delete('0.0',"end")
+        self.configure(state="normal")
+        self.insert("0.0",text)
+        self.configure(state="disabled")
+        self.tag_add("center", "0.0", "end")
+    
+    def delete_text(self):
+        self.delete('0.0',"end")
+
+class status_box(ctk.CTkFrame):
+    def __init__(self, master, width = 80, height = 40, corner_radius = 8, border_width = None, bg_color = "gray", fg_color = None, border_color = None, background_corner_colors = None, overwrite_preferred_drawing_method = None, **kwargs):
+        super().__init__(master, width, height, corner_radius, border_width, bg_color, fg_color, border_color, background_corner_colors, overwrite_preferred_drawing_method, **kwargs)
+        self.textbox = MyTextBox(self,width=width,height=height,bg_color="transparent")
+        self.textbox.write("offline")
+        self.textbox.place(relx=0.5,rely=0.5,anchor=ctk.CENTER)
 
 
 class amr_card(ctk.CTkFrame):
     def __init__(self, master, amr:AMR, width = 300, height = 50, corner_radius = 10, border_width = None, bg_color = "transparent", fg_color = None, border_color = None, background_corner_colors = None, overwrite_preferred_drawing_method = None, **kwargs):
         super().__init__(master, width, height, corner_radius, border_width, bg_color, fg_color, border_color, background_corner_colors, overwrite_preferred_drawing_method, **kwargs)
-        status_indicator = status_box(self)
-        status_indicator.grid()
+
+        self.grid_propagate(False) # disables children deciding size of parent
+        self.amr = amr
+
+        if not is_valid_ipv4(self.amr.ip):
+            print(f"WARNING: INVALID IP, given IP-address is not valid: {self.amr.ip}\nThis may cause unintended effects in buttons")
+        self.bindtags(self.amr.ip)
+        
+
+        self.status_indicator = status_box(self)
+        self.status_indicator.grid(row=1,column=1)
+        self.status_indicator.bindtags(self.amr.ip)
+
+        self.name = MyTextBox(self,height=height)
+        self.name.write(self.amr.name)
+        self.name.grid(row=1,column=2)
+        self.name.bindtags(self.amr.ip)
+        
+        self.bind_class(self.amr.ip,"<Button-1>", func=lambda e: print(f'clicked! {e}'))
+        
 
 
 if __name__ == '__main__':
     app = ctk.CTk()
     
-    card = amr_card(app)
+    card = amr_card(app,
+                    AMR("192.168.0.128","AMR #1","","")
+    )
 
     card.pack()
 
