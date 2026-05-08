@@ -123,6 +123,9 @@ class GUI(ctk.CTk):
     def get_data(self):
         database_path = self.get_database_path()
 
+        # Read the current database state once and build a compact snapshot for the UI.
+        # This keeps the overview focused on the latest row per AMR instead of redrawing
+        # every historical record on the screen.
         with sqlite3.connect(database_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
@@ -133,12 +136,14 @@ class GUI(ctk.CTk):
 
         latest_data_by_ip = {}
         for row in latest_data_rows:
+            # Keep only the most recent data row for each AMR IP.
             amr_ip = row["amr_ip"]
             if amr_ip not in latest_data_by_ip:
                 latest_data_by_ip[amr_ip] = row
 
         latest_error_by_ip = {}
         for row in latest_error_rows:
+            # Same idea for errors: one latest entry per AMR is enough for the overview.
             amr_ip = row["amr_ip"]
             if amr_ip not in latest_error_by_ip:
                 latest_error_by_ip[amr_ip] = row
@@ -202,6 +207,8 @@ class GUI(ctk.CTk):
     def get_data_signature(self):
         database_path = self.get_database_path()
 
+        # A small fingerprint of the tables is cheaper than rebuilding the whole screen.
+        # If this signature stays the same, nothing visible needs to change.
         with sqlite3.connect(database_path) as conn:
             cursor = conn.cursor()
             amr_count = cursor.execute("SELECT COUNT(*) FROM amr").fetchone()[0]
@@ -226,6 +233,8 @@ class GUI(ctk.CTk):
     def update_loop(self):
         data_signature = self.get_data_signature()
 
+        # Only rebuild the cards and error log if the database actually changed.
+        # This avoids recreating all widgets every few seconds when the data is unchanged.
         if data_signature != self.last_data_signature:
             data = self.get_data()
 
