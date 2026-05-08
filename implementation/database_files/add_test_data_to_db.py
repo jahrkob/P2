@@ -83,7 +83,8 @@ with app.app_context():
         new_error = Error(
             amr_ip=f'192.168.1.{amr_ip}',
             error=ErrorTypes[error_type],
-            error_desc=Descriptions[error_type]
+            error_desc=Descriptions[error_type],
+            timestamp=datetime.now()+timedelta(seconds=i)
         )
         db.session.add(new_error)
     db.session.commit()
