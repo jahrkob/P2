@@ -1,9 +1,12 @@
-import sqlite3, json, time, subprocess, requests
+import sqlite3, json, time, subprocess, requests, sqlalchemy
 from datetime import datetime
 from internet_device import InternetDevice # | Den her er nok overflødig
 from amr import AMR
 from data_grapher import DataGrapher
 from raspberry_pi_files.RaspberryPi import RaspberryPi
+
+from database_files.Database_specification import app, db
+import database_files.Database_specification as db_spec
 
 class NetworkMonitorer:
     """Class to monitor the network and manage the fleet of AMRs."""
@@ -23,92 +26,113 @@ class NetworkMonitorer:
         )
 
     def load_amr_database(self):
-        conn = sqlite3.connect(self.database)
-        cursor = conn.cursor()
+        with app.app_context():
+            return db.session.query(db_spec.AMR).all()
+        # conn = sqlite3.connect(self.database)
+        # cursor = conn.cursor()
 
-        cursor.execute("SELECT * FROM amr")
+        # cursor.execute("SELECT * FROM amr")
 
-        self.amr_list = cursor.fetchall()
+        # self.amr_list = cursor.fetchall()
 
-        conn.commit()
-        conn.close()
+        # conn.commit()
+        # conn.close()
 
     def add_amr_to_database(self, ip, name, raspi_ip):
-        conn = sqlite3.connect(self.database)
-        cursor = conn.cursor()
+        # conn = sqlite3.connect(self.database)
+        # cursor = conn.cursor()
+
 
         try:
-            cursor.execute(
-                "INSERT INTO amr (ip, name, raspi_ip) VALUES (?, ?, ?)", 
-                (ip, name, raspi_ip))
-            self.amr_list.append(AMR(ip,name,raspi_ip)) # add to list in memory
-        except sqlite3.IntegrityError as e:
-            print(str(e))
+            with app.app_context():
+                db.session.add(db_spec.AMR(ip=ip,name=name,raspi_ip=raspi_ip))
+                db.session.commit()
+            # cursor.execute(
+            #     "INSERT INTO amr (ip, name, raspi_ip) VALUES (?, ?, ?)", 
+            #     (ip, name, raspi_ip))
+            # self.amr_list.append(AMR(ip=ip,name=name,raspi_ip=raspi_ip)) # add to list in memory
+        except sqlalchemy.exc.IntegrityError as e:
+            print(str(e).replace('\n', ' '))
 
         
 
-        conn.commit()
-        conn.close()
+        # conn.commit()
+        # conn.close()
 
     def remove_amr_from_database(self, ip):
         """Removes an AMR from all tables in the database"""
         # Kan evt. opdeles i flere funktioner, så den sletter fra enkelte tables i stedet for hele databasen
-        conn = sqlite3.connect(self.database)
-        cursor = conn.cursor()
+        # conn = sqlite3.connect(self.database)
+        # cursor = conn.cursor()
 
         try: # try except ensures that data will only be deleted if it succeeds in deleting the specific AMR from ALL tables, else nothing is deleted
-            cursor.execute("BEGIN")
+            with app.app_context():
+                delete_user = db.session.query(db_spec.AMR).filter_by(ip=ip).first()
+                if delete_user:
+                    db.session.delete(delete_user)
+                    db.session.commit()
+                else:
+                    print(f'AMR with IP={ip} does not exist - cannot be deleted')
 
-            cursor.execute("DELETE FROM amr WHERE ip = ?", (ip,))
-            cursor.execute("DELETE FROM data WHERE amr_ip = ?", (ip,))
-            cursor.execute("DELETE FROM error WHERE amr_ip = ?", (ip,))
+        #     cursor.execute("BEGIN")
+
+        #     cursor.execute("DELETE FROM amr WHERE ip = ?", (ip,))
+        #     cursor.execute("DELETE FROM data WHERE amr_ip = ?", (ip,))
+        #     cursor.execute("DELETE FROM error WHERE amr_ip = ?", (ip,))
         
-            conn.commit()
+        #     conn.commit()
 
-            ##### THIS NOT WORK #####
-            for i, obj in enumerate(self.amr_list):
-                print(obj)
-                if obj.ip == ip:
-                    self.amr_list.pop(i)
+        #     ##### THIS NOT WORK #####
+        #     for i, obj in enumerate(self.amr_list):
+        #         print(obj)
+        #         if obj.ip == ip:
+        #             self.amr_list.pop(i)
 
         except Exception as e:
-            conn.rollback()
+            # conn.rollback()
             print("Error: ", e)
         
-        finally:
-            conn.close()
+        # finally:
+        #     conn.close()
 
     # Jeg antager at det bare er alt i "data" table i databasen. Kan nemt rettes, hvis nødvendigt.
-    def save_amr_data(self, id, amr_ip, rtt, jitter, packet_loss, signal_strength, noise, rssi, battery, pos_x, pos_y):
+    def save_amr_data(self, amr_ip, rtt, jitter, packet_loss, signal_strength, noise, rssi, battery, pos_x, pos_y):
         """Saves all network data to database"""
-        conn = sqlite3.connect(self.database)
-        cursor = conn.cursor()
+        with app.app_context():
+            db.session.add(db_spec.Data(amr_ip=amr_ip,rtt=rtt,jitter=jitter,packet_loss=packet_loss,signal_strength=signal_strength,noise=noise,rssi=rssi,battery=battery,pos_x=pos_x,pos_y=pos_y))
+            db.session.commit()
+        # conn = sqlite3.connect(self.database)
+        # cursor = conn.cursor()
 
-        timestamp = datetime.now().isoformat()
+        # timestamp = datetime.now().isoformat()
 
-        cursor.execute(
-            "INSERT INTO data (id, amr_ip, timestamp, rtt, jitter, packet_loss, signal_strength, noise, rssi, battery, pos_x, pos_y)",
-            (id, amr_ip, timestamp, rtt, jitter, packet_loss, signal_strength, noise, rssi, battery, pos_x, pos_y)
-        )
+        # cursor.execute(
+        #     "INSERT INTO data (id, amr_ip, timestamp, rtt, jitter, packet_loss, signal_strength, noise, rssi, battery, pos_x, pos_y)",
+        #     (id, amr_ip, timestamp, rtt, jitter, packet_loss, signal_strength, noise, rssi, battery, pos_x, pos_y)
+        # )
 
-        conn.commit()
-        conn.close()
+        # conn.commit()
+        # conn.close()
 
     # Jeg antager at det her er alt der skal i "error" table.
-    def save_amr_error(self, id, amr_ip, error, error_desc):
+    def save_amr_error(self, amr_ip, error, error_desc):
         """Saves status of amr to database"""
-        conn = sqlite3.connect(self.database)
-        cursor = conn.cursor()
+
+        with app.app_context():
+            db.session.add(db_spec.Error(amr_ip=amr_ip,error=error,error_desc=error_desc))
+            db.session.commit()
+        # conn = sqlite3.connect(self.database)
+        # cursor = conn.cursor()
         
-        timestamp = datetime.now().isoformat()
+        # timestamp = datetime.now().isoformat()
 
-        cursor.execute(
-            "INSERT INTO error (id, amr_ip, timestamp, error, error_desc)", 
-            (id, amr_ip, timestamp, error, error_desc)
-        )
+        # cursor.execute(
+        #     "INSERT INTO error (id, amr_ip, timestamp, error, error_desc)", 
+        #     (id, amr_ip, timestamp, error, error_desc)
+        # )
 
-        conn.commit()
-        conn.close()
+        # conn.commit()
+        # conn.close()
 
     # Skal laves når AMR class er færdig
     def save_api_errors(self, amr: AMR):
@@ -137,7 +161,7 @@ class NetworkMonitorer:
                 ["ping", "-c", "4", amr.ip],
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10000
             )
 
             output = result.stdout + "\n" + result.stderr
@@ -210,7 +234,7 @@ class NetworkMonitorer:
 
     #     return signal_strength, noise, rssi
 
-    def monitor_one_amr(self, amr: AMR):
+    def monitor_one_amr(self, amr: AMR): # Fix this - We get JSON with data not tuple
         """Poll one AMR, measure network/Wi-Fi, and save to database."""
 
         rtt = None
@@ -224,48 +248,48 @@ class NetworkMonitorer:
         pos_y = None
 
         try:
-            amr.update_status() # vi skal finde ud af om vi bruge get eller update
-            amr.get_status()
-            battery = amr.get_battery_percentage()
-            pos_x = amr.get_pos_x()
-            pos_y = amr.get_pos_y()
+            #amr.update_status() # vi skal finde ud af om vi bruge get eller update
+            # battery = amr.get_battery_percentage()
+            # pos_x = amr.get_pos_x()
+            # pos_y = amr.get_pos_y()
+            status = amr.get_status()
             self.save_api_errors(amr)
 
         except Exception as e:
-            self.save_amr_error(amr.id, amr.ip, "POLLING_ERROR", str(e))
+            self.save_amr_error(amr.ip, "POLLING_ERROR", str(e))
 
         try:
             rtt, jitter, packet_loss = self.measure_network_metrics(amr)
         except Exception as e:
-            self.save_amr_error(amr.id, amr.ip, "PING_ERROR", str(e))
+            self.save_amr_error(amr.ip, "PING_ERROR", str(e))
 
         try:
-            signal_strength, noise, rssi = RaspberryPi.get_signal_metrics(amr)
+            signal_strength, noise, rssi = RaspberryPi.get_signal_metrics(amr) # this line
         except Exception as e:
-            self.save_amr_error(amr.id, amr.ip, "RASPI_METRICS_ERROR", str(e))
+            self.save_amr_error(amr.ip, "RASPI_METRICS_ERROR", str(e))
 
         self.save_amr_data(
-            id=amr.id,
             amr_ip=amr.ip,
             rtt=rtt,
             jitter=jitter,
             packet_loss=packet_loss,
             signal_strength=signal_strength,
             noise=noise,
-            rssi=rssi,
-            battery=battery,
-            pos_x=pos_x,
-            pos_y=pos_y
+            rssi=None,
+            battery=status['battery_percentage'],
+            pos_x=status['position']['x'],
+            pos_y=status['position']['x']
         )
 
         print(
             f"{amr.name} | "
             f"Battery: {battery} | "
-            f"Pos: ({pos_x}, {pos_y}) | "
+            f"Pos: ({status['position']['x']}, {status['position']['y']}) | "
             f"RTT: {rtt} ms | "
             f"Jitter: {jitter} ms | "
             f"Packet loss: {packet_loss}% | "
-            f"RSSI: {rssi}"
+            f"RSSI: {rssi} | "
+            f"Battery: {status['battery_percentage']}"
         )
 
     def active_monitoring(self, interval_seconds=5, cycles=None, reload_from_database=True):
