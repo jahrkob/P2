@@ -1,5 +1,11 @@
 import requests
-from internet_device import InternetDevice
+
+# import sys
+# cur_parent_dirs = sys.path[0].split('\\')
+# parent_dir_index = cur_parent_dirs.index("P2")+1
+# sys.path.append("\\".join(cur_parent_dirs[0:parent_dir_index])) # allows imports from P2 folder
+
+from implementation.internet_device import InternetDevice
 
 class AMR(InternetDevice):
     """Autonomous Mobile Robot."""

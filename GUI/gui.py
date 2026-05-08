@@ -8,6 +8,16 @@ from datetime import datetime, timedelta
 from functools import partial
 from pathlib import Path
 
+import sys
+cur_parent_dirs = sys.path[0].split('\\')
+parent_dir_index = cur_parent_dirs.index("P2")+1
+sys.path.append("\\".join(cur_parent_dirs[0:parent_dir_index])) # allows imports from P2 folder
+
+from implementation.amr import AMR
+
+#sys.path.append(os.path.abspath("/home/el/foo4/stuff"))
+#from implementation.amr import AMR
+
 # Import page classes from other files
 from overview import OverviewPage
 from error_log import ErrorLogPage
@@ -272,7 +282,26 @@ class GUI(ctk.CTk):
 # ==================================================
 #                   Lasse Stuff
 # ==================================================
+AMR_list = []
+
+class status_box(ctk.CTkTextbox):
+    def __init__(self, master, width = 80, height = 46, corner_radius = None, border_width = None, border_spacing = 3, bg_color = "transparent", fg_color = None, border_color = None, text_color = None, scrollbar_button_color = None, scrollbar_button_hover_color = None, font = None, activate_scrollbars = True, **kwargs):
+        super().__init__(master, width, height, corner_radius, border_width, border_spacing, bg_color, fg_color, border_color, text_color, scrollbar_button_color, scrollbar_button_hover_color, font, activate_scrollbars, **kwargs)
+        self.insert(0,"offline")
+
 
 class amr_card(ctk.CTkFrame):
-    def __init__(self, master, width = 200, height = 200, corner_radius = None, border_width = None, bg_color = "transparent", fg_color = None, border_color = None, background_corner_colors = None, overwrite_preferred_drawing_method = None, **kwargs):
+    def __init__(self, master, amr:AMR, width = 300, height = 50, corner_radius = 10, border_width = None, bg_color = "transparent", fg_color = None, border_color = None, background_corner_colors = None, overwrite_preferred_drawing_method = None, **kwargs):
         super().__init__(master, width, height, corner_radius, border_width, bg_color, fg_color, border_color, background_corner_colors, overwrite_preferred_drawing_method, **kwargs)
+        status_indicator = status_box(self)
+        status_indicator.grid()
+
+
+if __name__ == '__main__':
+    app = ctk.CTk()
+    
+    card = amr_card(app)
+
+    card.pack()
+
+    app.mainloop()
