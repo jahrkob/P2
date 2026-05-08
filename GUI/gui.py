@@ -1,8 +1,9 @@
 import customtkinter as ctk  # CustomTkinter library (modern-looking tkinter)
 
-# 🔥 NEW IMPORTS
+#  NEW IMPORTS
 import sqlite3
 from functools import partial
+from pathlib import Path
 
 import sys
 cur_parent_dirs = sys.path[0].split('\\')
@@ -37,6 +38,7 @@ class GUI(ctk.CTk):
         # Handle window close properly
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.update_loop_id = None
+        self.last_data_signature = None
 
         # ===== GRID SETUP =====
         self.grid_columnconfigure(1, weight=1)
@@ -58,7 +60,7 @@ class GUI(ctk.CTk):
         # ===== PAGES =====
         self.frames = {}
 
-        self.frames["overview"] = OverviewPage(self.container)
+        self.frames["overview"] = OverviewPage(self.container, on_graph_request=self.open_graph_for_amr)
         self.frames["errors"] = ErrorLogPage(self.container)
         self.frames["map"] = MapPage(self.container)
         self.frames["graph"] = GraphPage(self.container)
@@ -102,26 +104,111 @@ class GUI(ctk.CTk):
     # =========================
     # Page switching
     # =========================
-    def show_frame(self, name):
+    def show_frame(self, name, amr_ip=None):
         self.frames[name].tkraise()
         # Draw graph when graph page is shown
         if name == "graph":
-            self.frames["graph"].draw_graph()
+            self.frames["graph"].draw_graph(amr_ip)
+
+    def open_graph_for_amr(self, amr_ip):
+        self.show_frame("graph", amr_ip)
+
+    def get_database_path(self):
+        project_root = Path(__file__).resolve().parent.parent
+        return project_root / "implementation" / "database_files" / "instance" / "database.db"
 
     # =========================
     # CORE METHODS
     # =========================
     def get_data(self):
+        database_path = self.get_database_path()
+
+        with sqlite3.connect(database_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+
+            amr_rows = cursor.execute("SELECT ip, name, raspi_ip FROM amr ORDER BY ip ASC LIMIT 10").fetchall()
+            latest_data_rows = cursor.execute("SELECT * FROM data ORDER BY timestamp DESC, id DESC").fetchall()
+            latest_error_rows = cursor.execute("SELECT * FROM error ORDER BY timestamp DESC, id DESC").fetchall()
+
+        latest_data_by_ip = {}
+        for row in latest_data_rows:
+            amr_ip = row["amr_ip"]
+            if amr_ip not in latest_data_by_ip:
+                latest_data_by_ip[amr_ip] = row
+
+        latest_error_by_ip = {}
+        for row in latest_error_rows:
+            amr_ip = row["amr_ip"]
+            if amr_ip not in latest_error_by_ip:
+                latest_error_by_ip[amr_ip] = row
+
+        amrs = []
+        errors = []
+
+        for amr in amr_rows:
+            amr_ip = amr["ip"]
+            latest_data = latest_data_by_ip.get(amr_ip)
+            latest_error = latest_error_by_ip.get(amr_ip)
+
+            if latest_error is not None:
+                status = "CRITICAL"
+            elif latest_data is not None:
+                status = "ONLINE"
+            else:
+                status = "OFFLINE"
+
+            packet_loss = None
+            if latest_data is not None and latest_data["packet_loss"] is not None:
+                packet_loss = round(float(latest_data["packet_loss"]) * 100, 1)
+
+            jitter = None
+            if latest_data is not None and latest_data["jitter"] is not None:
+                jitter = round(float(latest_data["jitter"]), 1)
+
+            ping = None
+            if latest_data is not None and latest_data["rtt"] is not None:
+                ping = round(float(latest_data["rtt"]), 1)
+
+            amrs.append(
+                {
+                    "name": amr["name"],
+                    "ip": amr_ip,
+                    "status": status,
+                    "ping": ping,
+                    "loss": packet_loss,
+                    "jitter": jitter,
+                    "battery": None if latest_data is None else latest_data["battery"],
+                    "signal_strength": None if latest_data is None else latest_data["signal_strength"],
+                    "rssi": None if latest_data is None else latest_data["rssi"],
+                }
+            )
+
+            if latest_error is not None:
+                errors.append(
+                    {
+                        "level": latest_error["error"],
+                        "amr": amr_ip,
+                        "time": latest_error["timestamp"],
+                        "description": latest_error["error_desc"],
+                    }
+                )
+
         return {
-            "amrs": [
-                {"id": 3, "status": "CRITICAL", "ping": 23, "loss": 10, "jitter": 9},
-                {"id": 1, "status": "OFFLINE", "ping": 0, "loss": 0, "jitter": 0}
-            ],
-            "errors": [
-                {"level": "CRITICAL", "amr": 1, "time": "19:02"},
-                {"level": "WARNING", "amr": 3, "time": "19:07"}
-            ]
+            "amrs": amrs,
+            "errors": errors,
         }
+
+    def get_data_signature(self):
+        database_path = self.get_database_path()
+
+        with sqlite3.connect(database_path) as conn:
+            cursor = conn.cursor()
+            amr_count = cursor.execute("SELECT COUNT(*) FROM amr").fetchone()[0]
+            latest_data = cursor.execute("SELECT COALESCE(MAX(id), 0), COALESCE(MAX(timestamp), '') FROM data").fetchone()
+            latest_error = cursor.execute("SELECT COALESCE(MAX(id), 0), COALESCE(MAX(timestamp), '') FROM error").fetchone()
+
+        return (amr_count, latest_data[0], latest_data[1], latest_error[0], latest_error[1])
 
     def show_graph(self, data):
         self.frames["overview"].update_amrs(data["amrs"])
@@ -137,13 +224,17 @@ class GUI(ctk.CTk):
     # UPDATE LOOP
     # =========================
     def update_loop(self):
-        data = self.get_data()
+        data_signature = self.get_data_signature()
 
-        self.show_graph(data)
+        if data_signature != self.last_data_signature:
+            data = self.get_data()
 
-        self.frames["errors"].load_errors()
+            self.show_graph(data)
 
-        self.notification("Data updated")
+            self.frames["errors"].load_errors()
+
+            self.notification("Data updated")
+            self.last_data_signature = data_signature
 
         self.update_loop_id = self.after(3000, self.update_loop)
 
@@ -153,7 +244,20 @@ class GUI(ctk.CTk):
     def on_closing(self):
         """Handle window close event"""
         if self.update_loop_id is not None:
-            self.after_cancel(self.update_loop_id)
+            try:
+                self.after_cancel(self.update_loop_id)
+            except Exception:
+                pass
+            self.update_loop_id = None
+
+        graph_frame = self.frames.get("graph")
+        if graph_frame is not None and hasattr(graph_frame, "cleanup"):
+            try:
+                graph_frame.cleanup()
+            except Exception:
+                pass
+
+        self.quit()
         self.destroy()
 
 
