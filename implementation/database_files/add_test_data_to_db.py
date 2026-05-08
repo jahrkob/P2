@@ -59,6 +59,11 @@ with app.app_context():
         new_data = Data(
             amr_ip=AMR_list[i%253].ip,
             timestamp=timestamp,
+        )
+    
+    for i in range(1000):
+        new_data = Data(
+            amr_ip=AMR_list[i%253].ip,
             rtt=random.random()*40,
             jitter=random.random()*10,
             packet_loss=random.random()*0.1,
@@ -66,7 +71,8 @@ with app.app_context():
             noise=random.random()*(-80),
             battery=(1000-i)/1000,
             pos_x=0.2*i,
-            pos_y=-0.04*i
+            pos_y=-0.04*i,
+            timestamp=datetime.now()+timedelta(seconds=i)
         )
         db.session.add(new_data)
     db.session.commit()
@@ -77,7 +83,8 @@ with app.app_context():
         new_error = Error(
             amr_ip=f'192.168.1.{amr_ip}',
             error=ErrorTypes[error_type],
-            error_desc=Descriptions[error_type]
+            error_desc=Descriptions[error_type],
+            timestamp=datetime.now()+timedelta(seconds=i)
         )
         db.session.add(new_error)
     db.session.commit()
