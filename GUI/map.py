@@ -5,31 +5,46 @@ import io
 import tkinter as tk
 from PIL import Image, ImageTk, ImageDraw
 
+import sys
+cur_parent_dirs = sys.path[0].split('\\')
+parent_dir_index = cur_parent_dirs.index("P2")
+sys.path.append("\\".join(cur_parent_dirs[0:parent_dir_index+1])) # allows imports from P2 folder
+from implementation.amr import AMR
+
 class MapPage(ctk.CTkFrame):
     def __init__(self, master, width = 200, height = 200, corner_radius = None, border_width = None, bg_color = "transparent", fg_color = None, border_color = None, background_corner_colors = None, overwrite_preferred_drawing_method = None, **kwargs):
         super().__init__(master, width, height, corner_radius, border_width, bg_color, fg_color, border_color, background_corner_colors, overwrite_preferred_drawing_method, **kwargs)
 
-    def create_image_from_base64(self, base64_str):
-        self.image = Image.open(
+    def set_image_from_base64(self, base64_str):
+        self.base_image = Image.open(
             io.BytesIO(
                 base64.b64decode(base64_str)
             )
         ).convert('RGBA')
+        self.image = self.base_image.copy()
 
-    def draw_point(self,x,y, radius=5):
+    def reset_image(self):
+        self.image = self.base_image.copy()
+
+    def draw_point(self,x_world,y_world,x_origin,y_origin,resolution, radius=5):
         if not self.image:
             raise NameError(description='self.image not defined')
         draw = ImageDraw.Draw(self.image)
 
-        draw.ellipse((x-radius,y-radius,x+radius,y+radius),fill='red')
+        pixel_x = int((x_world - x_origin) / resolution)
 
-        
+        pixel_y = self.image.height - ((y_world - y_origin) / resolution)
+
+        draw.ellipse((pixel_x-radius,pixel_y-radius,pixel_x+radius,pixel_y+radius),fill='red')
 
     def create_image(self):
         tkImage = ImageTk.PhotoImage(self.image)
 
         self.label = ctk.CTkLabel(self,image=tkImage,text='')
         self.label.pack()
+    
+    def update_position(self,amr):
+        pass # <------------------------------ make it so the points on the map is updated bassed on the last known position and based on new positions.
 
 
 
@@ -43,9 +58,9 @@ if __name__ == '__main__':
 
     mapPage = MapPage(app)
 
-    image = MapPage.create_image_from_base64(MapPage,test)
+    image = MapPage.set_image_from_base64(MapPage,test)
 
-    mapPage.draw_point(450,230)
+    mapPage.draw_point(-5.86,14.58,-23.122,-11.061,0.05)
 
     mapPage.create_image()
 
