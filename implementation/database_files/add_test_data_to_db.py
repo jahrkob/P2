@@ -59,6 +59,9 @@ with app.app_context():
         new_data = Data(
             amr_ip=AMR_list[i%253].ip,
             timestamp=timestamp,
+    for i in range(1000):
+        new_data = Data(
+            amr_ip=AMR_list[i%253].ip,
             rtt=random.random()*40,
             jitter=random.random()*10,
             packet_loss=random.random()*0.1,
