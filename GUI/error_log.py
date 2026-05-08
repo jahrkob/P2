@@ -25,6 +25,7 @@ class ErrorLogPage(ctk.CTkFrame):
     # DATABASE ACCESS
     # =========================
     def get_errors_from_db(self):
+        # Use the same implementation database as the graph and overview pages.
         project_root = Path(__file__).resolve().parent.parent
         database_path = project_root / "implementation" / "database_files" / "instance" / "database.db"
 
@@ -70,6 +71,8 @@ class ErrorLogPage(ctk.CTkFrame):
         at_bottom = scroll_pos[1] == 1.0
 
         if len(errors) != self.last_count:
+            # Only rewrite the text box when the row count changes.
+            # That keeps the scroll position and avoids unnecessary flicker.
             self.textbox.delete("1.0", "end")
 
             if not errors:
