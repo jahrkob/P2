@@ -1,9 +1,9 @@
 import requests
 
-# import sys
-# cur_parent_dirs = sys.path[0].split('\\')
-# parent_dir_index = cur_parent_dirs.index("P2")+1
-# sys.path.append("\\".join(cur_parent_dirs[0:parent_dir_index])) # allows imports from P2 folder
+import sys
+cur_parent_dirs = sys.path[0].split('\\')
+parent_dir_index = cur_parent_dirs.index("P2")+1
+sys.path.append("\\".join(cur_parent_dirs[0:parent_dir_index])) # allows imports from P2 folder
 
 from implementation.internet_device import InternetDevice
 
@@ -125,6 +125,6 @@ class AMR(InternetDevice):
     #     return self.status.get("errors", [])
 
 if __name__ == "__main__":
-    amr = AMR("192.168.100.51")
-    amr.get_status()
+    amr = AMR("192.168.100.51", "nig", "", "Basic ZGlzdHJpYnV0b3I6NjJmMmYwZjFlZmYxMGQzMTUyYzk1ZjZmMDU5NjU3NmU0ODJiYjhlNDQ4MDY0MzNmNGnmOTI5NzkyODM0YjAxNA==")
+    #amr.get_status()
     amr.get_map()
