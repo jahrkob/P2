@@ -135,7 +135,9 @@ class MapPage(ctk.CTkFrame):
 def update_position_live(app:ctk.CTk, map_page:MapPage):
     for i in range(1000):
         app.after(0,)
-        map_page.update_position('192.168.0.1', (-5.86+i/100,14.58-i/500),(-23.122,-11.061),0.05)
+        map_page.update_position('192.168.0.1', (-5.86+i/500,14.58-i/10),(-23.122,-11.061),0.05)
+        map_page.update_position('192.168.0.2', (-7.86+i/500,5.58+i/10),(-23.122,-11.061),0.05)
+        map_page.update_position('192.168.0.3', (-7.86+i/10,5.58+i/20),(-23.122,-11.061),0.05)
         sleep(0.1)
 
 if __name__ == '__main__':
