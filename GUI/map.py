@@ -1,3 +1,4 @@
+##### external dependencies #####
 import customtkinter as ctk
 import base64
 import io
@@ -5,11 +6,20 @@ from PIL import Image, ImageTk
 from threading import Thread
 from time import sleep
 
+##### importing same project files #####
 import sys
 cur_parent_dirs = sys.path[0].split('\\')
 parent_dir_index = cur_parent_dirs.index("P2")
 sys.path.append("\\".join(cur_parent_dirs[0:parent_dir_index+1])) # allows imports from P2 folder
 from implementation.amr import AMR
+
+
+##### for testing purposes #####
+import pytest
+from unittest.mock import patch
+from http import HTTPStatus
+
+
 
 class MapPage(ctk.CTkFrame):
     def __init__(self, master, base64_image, width = 200, height = 200, corner_radius = None, border_width = None, bg_color = "transparent", fg_color = None, border_color = None, background_corner_colors = None, overwrite_preferred_drawing_method = None, **kwargs):
@@ -160,7 +170,7 @@ class MapPage(ctk.CTkFrame):
     #     # draw points on map
     #     for key in self.amr_positions.keys():
     #         self.draw_point(*self.amr_positions[key]) # unpacks the tuple defining everything for the position
-        
+
 
 if __name__ == '__main__':
     def update_position_live(app:ctk.CTk, map_page:MapPage):
