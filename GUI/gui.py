@@ -64,7 +64,7 @@ class GUI(ctk.CTk):
 
         self.frames["overview"] = OverviewPage(self.container, on_graph_request=self.open_graph_for_amr)
         self.frames["errors"] = ErrorLogPage(self.container)
-        self.frames["map"] = MapPage(self.container, auth_token)
+        self.frames["map"] = MapPage(self.container, auth_token, testing=True)
         self.frames["graph"] = GraphPage(self.container)
 
         for frame in self.frames.values():
