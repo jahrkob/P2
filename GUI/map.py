@@ -50,7 +50,9 @@ class MapPage(ctk.CTkFrame):
 
     def set_start_image(self, base64_image):
         if base64_image == None:
-            self.get_map()
+            base64_image = self.get_map()
+            self.__set_image_from_base64(base64_image)
+            self.__create_image()
         else:
             self.__set_image_from_base64(base64_image)
             self.__create_image()
@@ -154,9 +156,13 @@ class MapPage(ctk.CTkFrame):
         
         for amr in self.__amr_list:
             try:
-                return AMR(*amr,self.auth_token).get_working_map()
-            except not KeyboardInterrupt as e:
+                map_data = AMR(amr.ip, amr.name, amr.raspi_ip, self.auth_token).get_working_map()
+                if isinstance(map_data, dict):
+                    return map_data["base_map"]
+                print(map_data)
+            except Exception as e:
                 print(e)
+        raise RuntimeError("No map could be loaded from any AMR in the database.")
 
     def start_update_thread(self):
         pass # <-----------------------------------------------------------------------------------
