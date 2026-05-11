@@ -101,6 +101,15 @@ class MapPage(ctk.CTkFrame):
 
         self.canvas.coords
     
+    def on_hover(self, event, text='placeholder'):
+        # Create text at the mouse position
+        global hover_text
+        hover_text = self.canvas.create_text(event.x, event.y - 10, text=text, anchor="sw", fill="black")
+
+    def on_leave(self, event):
+        # Remove the text when the mouse leaves
+        self.canvas.delete(hover_text)
+
     def __draw_robot(self, pixel_x, pixel_y, tags, r=5):
         return self.canvas.create_oval(
             pixel_x - r,
@@ -145,7 +154,10 @@ class MapPage(ctk.CTkFrame):
         if self.canvas.find_withtag(amr_ip):
             self.__move_robot(amr_ip,pixel_x,pixel_y)
         else:
-            self.__draw_robot(pixel_x,pixel_y,tags=(amr_ip,name))
+            robot = self.__draw_robot(pixel_x,pixel_y,tags=(amr_ip,name))
+            self.canvas.tag_bind(robot, "<Enter>", lambda e: self.on_hover(e, f'{name} - {amr_ip}'))
+            self.canvas.tag_bind(robot, "<Leave>", self.on_leave)
+            
 
     def update_amr_list(self):
         with app.app_context():
@@ -239,8 +251,6 @@ if __name__ == '__main__':
             #mapPage.create_image()
 
             #mapPage.reset_image()
-
-            map_page.update_position('192.168.0.1', (-5.86,14.58),(-23.122,-11.061),0.05)
 
             map_page.pack()
 
