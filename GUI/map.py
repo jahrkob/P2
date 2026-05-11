@@ -1,8 +1,6 @@
 import customtkinter as ctk
 import base64
-import base64
 import io
-import tkinter as tk
 from PIL import Image, ImageTk, ImageDraw
 
 import sys
@@ -14,6 +12,8 @@ from implementation.amr import AMR
 class MapPage(ctk.CTkFrame):
     def __init__(self, master, width = 200, height = 200, corner_radius = None, border_width = None, bg_color = "transparent", fg_color = None, border_color = None, background_corner_colors = None, overwrite_preferred_drawing_method = None, **kwargs):
         super().__init__(master, width, height, corner_radius, border_width, bg_color, fg_color, border_color, background_corner_colors, overwrite_preferred_drawing_method, **kwargs)
+        self.amr_positions: dict[str, tuple[float,float,float,float,float]] = {} # ip: (x, y, origin_x, origin_y, resolution)
+
 
     def set_image_from_base64(self, base64_str):
         self.base_image = Image.open(
@@ -24,7 +24,14 @@ class MapPage(ctk.CTkFrame):
         self.image = self.base_image.copy()
 
     def reset_image(self):
-        self.image = self.base_image.copy()
+        if hasattr(self, "label"):
+            self.image = self.base_image.copy()
+
+            tkImage = ImageTk.PhotoImage(self.image)
+
+            self.label.configure(image=tkImage)
+        else:
+            raise NameError(f'Self.label has not been defined yet image cannot be reset. Obj: {self}')
 
     def draw_point(self,x_world,y_world,x_origin,y_origin,resolution, radius=5):
         if not self.image:
@@ -38,17 +45,54 @@ class MapPage(ctk.CTkFrame):
         draw.ellipse((pixel_x-radius,pixel_y-radius,pixel_x+radius,pixel_y+radius),fill='red')
 
     def create_image(self):
+        """
+        Creates the image element (should only be run once)
+        """
+        if hasattr(self,"label"):
+            print('WARNING: the create_image function should only be run once')
+        
         tkImage = ImageTk.PhotoImage(self.image)
 
         self.label = ctk.CTkLabel(self,image=tkImage,text='')
         self.label.pack()
     
-    def update_position(self,amr):
-        pass # <------------------------------ make it so the points on the map is updated bassed on the last known position and based on new positions.
+    def update_position(self,amr_ip:str,pos:tuple[float,float],origin:tuple[float],resolution:float):
+        """
+        amr_ip:
+            string containing the ip of the amr 
+            example: "192.168.0.2"
 
+        pos:
+            tuple of floats containing positions as (x, y) 
+            example: (4.3, -2.5)
+        
+        origin:
+            tuple of floats containing position about the origin (x, y)
+            example: (-3.2, 1.5)
 
+        resolution:
+            how many meters there are per pixel. a value of 0.5 means each pixel is 0.5 meters
+            example: 0.05
 
+        note:
+            this does not update the map just the internal position dictionary
 
+        """
+        self.amr_positions[amr_ip] = (pos[0],pos[1],origin[0],origin[1],resolution)
+
+    def update_map(self):
+        """
+        Simply updates the map based on the positions saved:
+
+        note:
+            This does not update positions just the image showing the positions
+        """
+        self.reset_image() # use base image as template
+
+        # draw points on map
+        for key in self.amr_positions.keys():
+            self.draw_point(*self.amr_positions[key]) # unpacks the tuple defining everything for the position
+        
 
 
 if __name__ == '__main__':
@@ -63,6 +107,8 @@ if __name__ == '__main__':
     mapPage.draw_point(-5.86,14.58,-23.122,-11.061,0.05)
 
     mapPage.create_image()
+
+    mapPage.reset_image()
 
     mapPage.pack()
 
