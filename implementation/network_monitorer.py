@@ -38,6 +38,8 @@ class NetworkMonitorer:
         except sqlalchemy.exc.IntegrityError as e:
             print(str(e).replace('\n', ' '))
 
+        self.amr_list.append(name) # Kan også være ip, men er i tvivl om hvad der er smartest, eller om det reelt set bare kan være ligegyldigt
+
     def remove_amr_from_database(self, ip):
         """Removes an AMR from all tables in the database"""
         # Kan evt. opdeles i flere funktioner, så den sletter fra enkelte tables i stedet for hele databasen
@@ -71,7 +73,7 @@ class NetworkMonitorer:
 
     # Skal laves når AMR class er færdig
     def save_api_errors(self, amr: AMR):
-        errors = amr.get_errors() # er commented ud pt
+        errors = amr.get_errors()
 
         if not errors:
             return
@@ -84,7 +86,7 @@ class NetworkMonitorer:
                 error_name = "API_ERROR"
                 error_desc = str(err)
 
-            self.save_amr_error(amr.id, amr.ip, error_name, error_desc) # id er ikke en ting mere (skal måske fjernes)
+            self.save_amr_error(amr.ip, error_name, error_desc) # id er ikke en ting mere (skal måske fjernes)
 
     def measure_network_metrics(self, amr: AMR): # Der skal laves amr objekter med AMR classen
         """
@@ -93,7 +95,7 @@ class NetworkMonitorer:
         """
         try:
             result = subprocess.run(
-                ["ping", "-c", "4", amr.ip],
+                ["ping", "-c", "4", amr.ip], # sender 4 pakker. (Er det nok?)
                 capture_output=True,
                 text=True,
                 timeout=10000
@@ -133,7 +135,7 @@ class NetworkMonitorer:
             return rtt, jitter, packet_loss
 
         except Exception as e:
-            self.save_amr_error(amr.id, amr.ip, "NETWORK_MEASUREMENT_ERROR", str(e))
+            self.save_amr_error(amr.ip, "NETWORK_MEASUREMENT_ERROR", str(e))
             return 0.0, 0.0, 100.0
 
     def monitor_one_amr(self, amr: AMR): # Fix this - We get JSON with data not tuple
