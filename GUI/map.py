@@ -2,7 +2,7 @@
 import customtkinter as ctk
 import base64
 import io
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageFile
 from threading import Thread
 from time import sleep
 
@@ -12,11 +12,7 @@ cur_parent_dirs = sys.path[0].split('\\')
 parent_dir_index = cur_parent_dirs.index("P2")
 sys.path.append("\\".join(cur_parent_dirs[0:parent_dir_index+1])) # allows imports from P2 folder
 
-##### same project files #####
-import implementation.database_files.Database_specification as db_spec
-from implementation.database_files.Database_specification import AMR as AMRTable
-from implementation.amr import AMR
-
+from implementation.network_monitorer import NetworkMonitorer
 
 ##### for testing purposes #####
 import pytest
@@ -27,11 +23,15 @@ from http import HTTPStatus
 
 
 class MapPage(ctk.CTkFrame):
-    def __init__(self, master, auth_token, base64_image=None, testing=False, width = 200, height = 200, corner_radius = None, border_width = None, bg_color = "transparent", fg_color = None, border_color = None, background_corner_colors = None, overwrite_preferred_drawing_method = None, **kwargs):
+    def __init__(self, master, network_monitorer: NetworkMonitorer, base64_image=None, testing=False, width = 200, height = 200, corner_radius = None, border_width = None, bg_color = "transparent", fg_color = None, border_color = None, background_corner_colors = None, overwrite_preferred_drawing_method = None, **kwargs):
         super().__init__(master, width, height, corner_radius, border_width, bg_color, fg_color, border_color, background_corner_colors, overwrite_preferred_drawing_method, **kwargs)
-        self.auth_token = auth_token # 'Basic ZGlzdHJpYnV0b3I6NjJmMmYwZjFlZmYxMGQzMTUyYzk1ZjZmMDU5NjU3NmU0ODJiYjhlNDQ4MDY0MzNmNGnmOTI5NzkyODM0YjAxNA=='
         self.amr_positions: dict[str, tuple[float,float,float,float,float]] = {} # ip: (x, y, origin_x, origin_y, resolution)
+        self.network_monitorer = network_monitorer
         self.factor = 1 # redundant for now but meant for zoom
+        self.__reload_map_button = None
+        self.__image_id = None
+        #self.pack_propagate(False)
+        self.canvas = self.__create_canvas()
         if testing:
             with patch('requests.get') as mock_set_image:
                 mock_response = Mock()
@@ -40,83 +40,76 @@ class MapPage(ctk.CTkFrame):
                 mock_response.json.return_value = response_dict
                 mock_set_image.return_value = mock_response
 
-                self.set_start_image(base64_image)
+                self.set_image(base64_image)
         else:
-            self.set_start_image(base64_image)
-        self.__amr_list:list[AMR] = []
+            self.set_image(base64_image)
 
         self.canvas.bind("<ButtonPress-1>", self.start_pan)
         self.canvas.bind("<B1-Motion>", self.pan)
         # self.canvas.bind("<MouseWheel>", self.zoom)
 
 
+    def __create_canvas(self):
+        canvas = ctk.CTkCanvas(self)
+        canvas.pack(expand=True, fill='both')
+        return canvas
+
     def __set_image_from_base64(self, base64_str):
-        self.base_image = Image.open(
+        return Image.open(
             io.BytesIO(
                 base64.b64decode(base64_str)
             )
         )
-        self.image = self.base_image.copy()
 
-    def set_start_image(self, base64_image):
-        if base64_image == None:
-            base64_image = self.get_map()
-        self.__set_image_from_base64(base64_image)
-        self.__create_image()
+    def set_image(self, base64_image: str):
+        if self.__image_id:
+            self.canvas.delete(self.__image_id)
+            self.__image_id = None
+        
+        if base64_image:
+            if self.__reload_map_button:
+                self.__reload_map_button.destroy()
+                self.__reload_map_button = None
+            
+            image = self.__set_image_from_base64(base64_image)
+            self.__create_image(image)
+        else:
+            if not self.__reload_map_button:
+                self.__create_reload_map_button()
 
-    # def reset_image(self):
-    #     if hasattr(self, "label"):
-    #         self.image = self.base_image.copy()
 
-    #         tkImage = ImageTk.PhotoImage(self.image)
-
-    #         self.label.configure(image=tkImage)
-    #     else:
-    #         raise NameError(f'Self.label has not been defined yet image cannot be reset. Obj: {self}')
-
-    # def draw_point(self,x_world,y_world,x_origin,y_origin,resolution, radius=5):
-    #     if not self.image:
-    #         raise NameError(description='self.image not defined')
-    #     draw = ImageDraw.Draw(self.image)
-
-    #     pixel_x = int((x_world - x_origin) / resolution)
-
-    #     pixel_y = self.image.height - ((y_world - y_origin) / resolution)
-
-    #     draw.ellipse((pixel_x-radius,pixel_y-radius,pixel_x+radius,pixel_y+radius),fill='red')
-
-    def __create_image(self):
+    def __create_image(self, image:ImageFile):
         """
         Creates the image/canvas element (should only be run once)
         """
         
-        self.tkImage = ImageTk.PhotoImage(self.image)
+        self.__tkImage = ImageTk.PhotoImage(image)
 
-        self.canvas = ctk.CTkCanvas(
-            self,
-            width=self.image.width,
-            height=self.image.height
-        )
-        self.canvas.pack()
-
-        self.image_id = self.canvas.create_image(
+        self.__image_id = self.canvas.create_image(
             0,
             0,
             anchor='nw',
-            image=self.tkImage
+            image=self.__tkImage
         )
-
-        self.canvas.coords
     
+    def __create_reload_map_button(self):
+        self.__reload_map_button = ctk.CTkButton(
+            self.canvas,
+            text='Reload',
+            command=lambda: self.set_image(self.network_monitorer.get_map())
+        )
+        self.__reload_map_button.pack()
+        
+
+    ##### hover effect on elements on map #####
     def __on_hover(self, event, text='placeholder'):
-        # Create text at the mouse position
         global hover_text
         hover_text = self.canvas.create_text(event.x, event.y - 10, text=text, anchor="sw", fill="black")
 
     def __on_leave(self, event):
-        # Remove the text when the mouse leaves
         self.canvas.delete(hover_text)
 
+    ##### draw elements on map #####
     def __draw_robot(self, pixel_x, pixel_y, tags, r=5):
         return self.canvas.create_oval(
             pixel_x - r,
@@ -128,6 +121,7 @@ class MapPage(ctk.CTkFrame):
             tags=tags
         )
 
+    ##### move elements on map #####
     def __move_robot(self, amr_ip, pixel_x, pixel_y, r=5):
         self.canvas.moveto(
                 amr_ip,
@@ -135,6 +129,7 @@ class MapPage(ctk.CTkFrame):
                 pixel_y
         )
 
+    ##### update position of an elements on map #####
     def update_position(self,amr_ip:str,pos:tuple[float,float],origin:tuple[float],resolution:float, name='robot'):
         """
         amr_ip:
@@ -153,8 +148,13 @@ class MapPage(ctk.CTkFrame):
             how many meters there are per pixel. a value of 0.5 means each pixel is 0.5 meters
             example: 0.05
         """
+        if not self.__image_id:
+            raise Warning('self.__image_id not defined in update_position')
+
+        x1, y1, x2, y2 = self.canvas.bbox(self.__image_id)
+
         pixel_x = (pos[0] - origin[0])/resolution
-        pixel_y = self.image.height - (pos[1] - origin[1])/resolution
+        pixel_y = (y2-y1) - (pos[1] - origin[1])/resolution
 
         self.amr_positions[amr_ip] = (pos[0],pos[1],origin[0],origin[1],resolution)
 
@@ -164,29 +164,11 @@ class MapPage(ctk.CTkFrame):
             robot = self.__draw_robot(pixel_x,pixel_y,tags=(amr_ip,name))
             self.canvas.tag_bind(robot, "<Enter>", lambda e: self.__on_hover(e, f'{name} - {amr_ip}'))
             self.canvas.tag_bind(robot, "<Leave>", self.__on_leave)
-            
-
-    def update_amr_list(self):
-        with db_spec.app.app_context():
-            self.__amr_list = db_spec.db.session.query(AMRTable).all()
-
-    def get_map(self):
-        self.update_amr_list()
-        
-        for amr in self.__amr_list:
-            try:
-                map_data = AMR(amr.ip, amr.name, amr.raspi_ip, self.auth_token).get_working_map()
-                if isinstance(map_data, dict):
-                    return map_data["base_map"]
-                print(map_data)
-            except Exception as e:
-                print(e)
-        raise RuntimeError("No map could be loaded from any AMR in the database.")
 
     def start_update_thread(self):
         pass # <-----------------------------------------------------------------------------------
 
-
+    ##### update position of an elements on map #####
     def start_pan(self, event):
         self.canvas.scan_mark(event.x, event.y)
 

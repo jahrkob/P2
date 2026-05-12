@@ -1,6 +1,15 @@
 import requests
 from typing import Optional, TypedDict
-from internet_device import InternetDevice
+
+##### importing same project files #####
+import sys
+cur_parent_dirs = sys.path[0].split('\\')
+parent_dir_index = cur_parent_dirs.index("P2")
+sys.path.append("\\".join(cur_parent_dirs[0:parent_dir_index+1])) # allows imports from P2 folder
+
+from implementation.internet_device import InternetDevice
+
+
 
 class SignalData(TypedDict): # So pylance knows what each key in json has as value
     rssi: float

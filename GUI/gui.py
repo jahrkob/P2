@@ -11,6 +11,7 @@ parent_dir_index = cur_parent_dirs.index("P2")
 sys.path.append("\\".join(cur_parent_dirs[0:parent_dir_index+1])) # allows imports from P2 folder
 
 from implementation.amr import AMR
+from implementation.network_monitorer import NetworkMonitorer
 import re
 
 #sys.path.append(os.path.abspath("/home/el/foo4/stuff"))
@@ -57,14 +58,19 @@ class GUI(ctk.CTk):
         self.container.grid_rowconfigure(0, weight=1)
         self.container.grid_columnconfigure(0, weight=1)
 
+        ##### Network monitorer #####
+        self.fleetManager_ip = '' # should be configurable in settings
+        auth_token = 'Basic ZGlzdHJpYnV0b3I6NjJmMmYwZjFlZmYxMGQzMTUyYzk1ZjZmMDU5NjU3NmU0ODJiYjhlNDQ4MDY0MzNmNGnmOTI5NzkyODM0YjAxNA==' # should be configurable in settings
+        self.network_monitorer = NetworkMonitorer(fleet_manager_ip = self.fleetManager_ip, auth_token = auth_token)
+
+        start_map = self.network_monitorer.get_map()
+
         # ===== PAGES =====
         self.frames = {}
 
-        auth_token = 'Basic ZGlzdHJpYnV0b3I6NjJmMmYwZjFlZmYxMGQzMTUyYzk1ZjZmMDU5NjU3NmU0ODJiYjhlNDQ4MDY0MzNmNGnmOTI5NzkyODM0YjAxNA=='
-
         self.frames["overview"] = OverviewPage(self.container, on_graph_request=self.open_graph_for_amr)
         self.frames["errors"] = ErrorLogPage(self.container)
-        self.frames["map"] = MapPage(self.container, auth_token, testing=True)
+        self.frames["map"] = MapPage(self.container, self.network_monitorer, start_map, testing=True)
         self.frames["graph"] = GraphPage(self.container)
 
         for frame in self.frames.values():
@@ -221,7 +227,6 @@ class GUI(ctk.CTk):
 
     def show_graph(self, data):
         self.frames["overview"].update_amrs(data["amrs"])
-        self.frames["map"].update_map(data["amrs"])
 
     def show_error(self, error):
         self.frames["errors"].add_error(error)
