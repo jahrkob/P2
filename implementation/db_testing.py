@@ -19,6 +19,6 @@ print(nm)
 
 nm.load_amr_database()
 
-amr1 = AMR("1")
+amr1 = AMR("")
 
 print(nm.amr_list)
