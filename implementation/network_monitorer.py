@@ -2,9 +2,13 @@ import sqlite3, json, time, subprocess, sqlalchemy # sqlite3 er ikke længere i 
 from datetime import datetime
 from amr import AMR
 from raspberry_pi_files.RaspberryPi import RaspberryPi
+from threading import Lock, RLock
 
 from database_files.Database_specification import app, db
 import database_files.Database_specification as db_spec
+
+lock = Lock()
+rlock = RLock()
 
 class NetworkMonitorer:
     """Class to monitor the network and manage the fleet of AMRs."""
