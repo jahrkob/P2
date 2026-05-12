@@ -86,9 +86,6 @@ class AMR(InternetDevice):
         else:
             return(f"Error {response.status_code}: {response.text}")
         
-        # else:
-        #     return(f"Error {response.status_code}: {response.text}")
-        
     def get_errors(self):
         if not self.status: # Opdaterer status hvis den ikke har en endnu, da errors ellers ville være tom. Kan evt. fjernes
             self.get_status() 
