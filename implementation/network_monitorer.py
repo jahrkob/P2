@@ -13,7 +13,7 @@ class NetworkMonitorer:
         self.fleet_manager_ip = fleet_manager_ip
         self.database = database
         self.auth_token = auth_token
-        self.amr_list = []
+        self.amr_list: list[AMR] = []
         self.load_amr_database()
 
     def __str__(self):
@@ -24,8 +24,15 @@ class NetworkMonitorer:
         )
 
     def load_amr_database(self):
+        self.amr_list = []
+
         with app.app_context():
-            print(db.session.query(db_spec.AMR).all())
+            db_amr_list = db.session.query(db_spec.AMR).all()
+        
+        for amr_spec in db_amr_list:
+            self.amr_list.append(AMR(amr_spec.ip,amr_spec.name,amr_spec.raspi_ip,self.auth_token))
+        
+        return db_amr_list
 
     def add_amr_to_database(self, ip, name, raspi_ip):
         try:
@@ -38,7 +45,7 @@ class NetworkMonitorer:
         except sqlalchemy.exc.IntegrityError as e:
             print(str(e).replace('\n', ' '))
 
-        self.amr_list.append(name) # Kan også være ip, men er i tvivl om hvad der er smartest, eller om det reelt set bare kan være ligegyldigt
+        self.amr_list.append(AMR(ip, name, raspi_ip, self.auth_token))
 
     def remove_amr_from_database(self, ip):
         """Removes an AMR from all tables in the database"""
