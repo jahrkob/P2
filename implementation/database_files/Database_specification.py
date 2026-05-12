@@ -5,9 +5,10 @@ import sqlalchemy as sql
 from datetime import datetime
 from pathlib import Path
 
-app = Flask(__name__)
 database_path = Path(__file__).resolve().parent / 'instance' / 'database.db'
-app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{database_path.as_posix()}"
+
+app = Flask(__name__, instance_relative_config=True)
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{database_path}'
 db = SQLAlchemy(app)
 #api = Api(app) # dont need API anymore since it runs on the fleet managers device
 
@@ -24,7 +25,7 @@ class Data(db.Model):
     rtt = sql.Column(sql.Float)
     jitter = sql.Column(sql.Float)
     packet_loss = sql.Column(sql.Float)
-    signal_strength = sql.Column(sql.Float)
+    quality = sql.Column(sql.Float)
     noise = sql.Column(sql.Float)
     rssi = sql.Column(sql.Float)
     battery = sql.Column(sql.Float)

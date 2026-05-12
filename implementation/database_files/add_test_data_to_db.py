@@ -67,7 +67,7 @@ with app.app_context():
             rtt=random.random()*40,
             jitter=random.random()*10,
             packet_loss=random.random()*0.1,
-            signal_strength=random.random()*(-72),
+            quality=random.random()*(-72),
             noise=random.random()*(-80),
             battery=(1000-i)/1000,
             pos_x=0.2*i,

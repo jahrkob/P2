@@ -1,6 +1,15 @@
 import requests
 from typing import Optional, TypedDict
-from internet_device import InternetDevice
+
+##### importing same project files #####
+import sys
+cur_parent_dirs = sys.path[0].split('\\')
+parent_dir_index = cur_parent_dirs.index("P2")
+sys.path.append("\\".join(cur_parent_dirs[0:parent_dir_index+1])) # allows imports from P2 folder
+
+from implementation.internet_device import InternetDevice
+
+
 
 class SignalData(TypedDict): # So pylance knows what each key in json has as value
     rssi: float
@@ -25,16 +34,23 @@ class RaspberryPi(InternetDevice):
         """
         url = f'http://{self.ip}:{self.port}/api/status'
         print(f'{self}: get {url}')
+
         api_response = requests.get(url,headers=self.__api_key)
         api_response.raise_for_status() # Raises an HTTPError if the response was an error
 
-        return api_response.json()
+        data = api_response.json()
 
-if __name__ == "__main__":
+        rssi = data.get("rssi")
+        quality = data.get("quality")
+        noise = data.get("noise")
+
+        return quality, noise, rssi # api_response.json() - bruges ikke pt
+
+# if __name__ == "__main__":
     ##### TESTING #####
-    name = 'testing_rasp' # can be whatever
-    ip = '192.168.0.96'
-    port = 5000 # Only 5000 for testing in reality should be 80
-    rasp = RaspberryPi(device_name=name,ip=ip,port=port)
+    # name = 'testing_rasp' # can be whatever
+    # ip = '192.168.0.96'
+    # port = 5000 # Only 5000 for testing in reality should be 80
+    # rasp = RaspberryPi(device_name=name,ip=ip,port=port)
 
-    print(rasp.get_signal_metrics())
+    # print(rasp.get_signal_metrics())
