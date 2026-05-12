@@ -36,6 +36,10 @@ class OverviewPage(ctk.CTkFrame):
             return "#c94f4f", "#6f2323", "#ffe1e1", "#ff5e5e"
         return "#70757d", "#494c52", "#e4e7ea", "#9aa0a6"
 
+    def _connection_state(self, status):
+        status_text = str(status or "").upper()
+        return "offline" if status_text == "OFFLINE" else "online"
+
     def _metric_style(self, value, status, lower_is_better=True, threshold=None):
         status_text = str(status or "").upper()
         if status_text == "OFFLINE":
@@ -116,11 +120,12 @@ class OverviewPage(ctk.CTkFrame):
             text_color="#e7eaee"
         ).pack(side="left", padx=16)
 
-        status_text = "online" if str(status).upper() == "ONLINE" else "offline" if str(status).upper() == "OFFLINE" else "critical"
+        connection_state = self._connection_state(status)
+        connection_dot = "#2ecc71" if connection_state == "online" else "#9aa0a6"
         status_row = ctk.CTkFrame(top_row, fg_color="transparent")
         status_row.pack(side="right")
-        ctk.CTkLabel(status_row, text="●", font=("Arial", 20, "bold"), text_color=dot).pack(side="left", padx=(0, 6))
-        ctk.CTkLabel(status_row, text=status_text, font=("Arial", 15, "bold"), text_color="#d7dbe0").pack(side="left")
+        ctk.CTkLabel(status_row, text="●", font=("Arial", 20, "bold"), text_color=connection_dot).pack(side="left", padx=(0, 6))
+        ctk.CTkLabel(status_row, text=connection_state, font=("Arial", 15, "bold"), text_color="#d7dbe0").pack(side="left")
 
         if amr_ip:
             ctk.CTkLabel(card, text=f"IP: {amr_ip}", font=("Arial", 12), text_color="#99a2ad").pack(anchor="w", padx=18, pady=(0, 6))
