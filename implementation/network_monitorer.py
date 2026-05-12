@@ -1,8 +1,6 @@
-import sqlite3, json, time, subprocess, requests, sqlalchemy
+import sqlite3, json, time, subprocess, sqlalchemy # sqlite3 er ikke længere i brug, og internet_device er fjernet (bruges gennem raspi og amr)
 from datetime import datetime
-from internet_device import InternetDevice # | Den her er nok overflødig
 from amr import AMR
-from data_grapher import DataGrapher
 from raspberry_pi_files.RaspberryPi import RaspberryPi
 
 from database_files.Database_specification import app, db
@@ -11,11 +9,11 @@ import database_files.Database_specification as db_spec
 class NetworkMonitorer:
     """Class to monitor the network and manage the fleet of AMRs."""
 
-    def __init__(self, fleet_manager_ip, database, auth_token = None):
+    def __init__(self, fleet_manager_ip, database, auth_token = None): # evt kom tilbage til init, da vi lige skal være sikre på hvilke parametre den skal bruge
         self.fleet_manager_ip = fleet_manager_ip
         self.database = database
         self.auth_token = auth_token
-        self.amr_list = []
+        self.amr_list: list[AMR] = []
         self.load_amr_database()
 
     def __str__(self):
@@ -26,44 +24,32 @@ class NetworkMonitorer:
         )
 
     def load_amr_database(self):
+        self.amr_list = []
+
         with app.app_context():
-            return db.session.query(db_spec.AMR).all()
-        # conn = sqlite3.connect(self.database)
-        # cursor = conn.cursor()
-
-        # cursor.execute("SELECT * FROM amr")
-
-        # self.amr_list = cursor.fetchall()
-
-        # conn.commit()
-        # conn.close()
+            db_amr_list = db.session.query(db_spec.AMR).all()
+        
+        for amr_spec in db_amr_list:
+            self.amr_list.append(AMR(amr_spec.ip,amr_spec.name,amr_spec.raspi_ip,self.auth_token))
+        
+        return db_amr_list
 
     def add_amr_to_database(self, ip, name, raspi_ip):
-        # conn = sqlite3.connect(self.database)
-        # cursor = conn.cursor()
-
-
         try:
             with app.app_context():
+                # print("DB URL:", db.engine.url) # for testing
                 db.session.add(db_spec.AMR(ip=ip,name=name,raspi_ip=raspi_ip))
                 db.session.commit()
-            # cursor.execute(
-            #     "INSERT INTO amr (ip, name, raspi_ip) VALUES (?, ?, ?)", 
-            #     (ip, name, raspi_ip))
             # self.amr_list.append(AMR(ip=ip,name=name,raspi_ip=raspi_ip)) # add to list in memory
+        
         except sqlalchemy.exc.IntegrityError as e:
             print(str(e).replace('\n', ' '))
 
-        
-
-        # conn.commit()
-        # conn.close()
+        self.amr_list.append(AMR(ip, name, raspi_ip, self.auth_token))
 
     def remove_amr_from_database(self, ip):
         """Removes an AMR from all tables in the database"""
         # Kan evt. opdeles i flere funktioner, så den sletter fra enkelte tables i stedet for hele databasen
-        # conn = sqlite3.connect(self.database)
-        # cursor = conn.cursor()
 
         try: # try except ensures that data will only be deleted if it succeeds in deleting the specific AMR from ALL tables, else nothing is deleted
             with app.app_context():
@@ -74,45 +60,15 @@ class NetworkMonitorer:
                 else:
                     print(f'AMR with IP={ip} does not exist - cannot be deleted')
 
-        #     cursor.execute("BEGIN")
-
-        #     cursor.execute("DELETE FROM amr WHERE ip = ?", (ip,))
-        #     cursor.execute("DELETE FROM data WHERE amr_ip = ?", (ip,))
-        #     cursor.execute("DELETE FROM error WHERE amr_ip = ?", (ip,))
-        
-        #     conn.commit()
-
-        #     ##### THIS NOT WORK #####
-        #     for i, obj in enumerate(self.amr_list):
-        #         print(obj)
-        #         if obj.ip == ip:
-        #             self.amr_list.pop(i)
-
         except Exception as e:
-            # conn.rollback()
             print("Error: ", e)
-        
-        # finally:
-        #     conn.close()
 
     # Jeg antager at det bare er alt i "data" table i databasen. Kan nemt rettes, hvis nødvendigt.
-    def save_amr_data(self, amr_ip, rtt, jitter, packet_loss, signal_strength, noise, rssi, battery, pos_x, pos_y):
+    def save_amr_data(self, amr_ip, rtt, jitter, packet_loss, quality, noise, rssi, battery, pos_x, pos_y):
         """Saves all network data to database"""
         with app.app_context():
-            db.session.add(db_spec.Data(amr_ip=amr_ip,rtt=rtt,jitter=jitter,packet_loss=packet_loss,signal_strength=signal_strength,noise=noise,rssi=rssi,battery=battery,pos_x=pos_x,pos_y=pos_y))
+            db.session.add(db_spec.Data(amr_ip=amr_ip,rtt=rtt,jitter=jitter,packet_loss=packet_loss,quality=quality,noise=noise,rssi=rssi,battery=battery,pos_x=pos_x,pos_y=pos_y))
             db.session.commit()
-        # conn = sqlite3.connect(self.database)
-        # cursor = conn.cursor()
-
-        # timestamp = datetime.now().isoformat()
-
-        # cursor.execute(
-        #     "INSERT INTO data (id, amr_ip, timestamp, rtt, jitter, packet_loss, signal_strength, noise, rssi, battery, pos_x, pos_y)",
-        #     (id, amr_ip, timestamp, rtt, jitter, packet_loss, signal_strength, noise, rssi, battery, pos_x, pos_y)
-        # )
-
-        # conn.commit()
-        # conn.close()
 
     # Jeg antager at det her er alt der skal i "error" table.
     def save_amr_error(self, amr_ip, error, error_desc):
@@ -121,18 +77,6 @@ class NetworkMonitorer:
         with app.app_context():
             db.session.add(db_spec.Error(amr_ip=amr_ip,error=error,error_desc=error_desc))
             db.session.commit()
-        # conn = sqlite3.connect(self.database)
-        # cursor = conn.cursor()
-        
-        # timestamp = datetime.now().isoformat()
-
-        # cursor.execute(
-        #     "INSERT INTO error (id, amr_ip, timestamp, error, error_desc)", 
-        #     (id, amr_ip, timestamp, error, error_desc)
-        # )
-
-        # conn.commit()
-        # conn.close()
 
     # Skal laves når AMR class er færdig
     def save_api_errors(self, amr: AMR):
@@ -149,16 +93,18 @@ class NetworkMonitorer:
                 error_name = "API_ERROR"
                 error_desc = str(err)
 
-            self.save_amr_error(amr.id, amr.ip, error_name, error_desc)
+        # evt. tilføj noget error scoring inden den gemmer til databasen
 
-    def measure_network_metrics(self, amr: AMR): # Der skal laves amr objekter med AMR classen
+            self.save_amr_error(amr.ip, error_name, error_desc) # id er ikke en ting mere (skal måske fjernes)
+
+    def measure_network_metrics(self, amr: AMR): # evt. brug tshark?
         """
         Measure RTT, jitter and packet loss using ping.
         Works on typical Linux ping output.
         """
         try:
             result = subprocess.run(
-                ["ping", "-c", "4", amr.ip],
+                ["ping", "-c", "4", amr.ip], # sender 4 pakker. (Er det nok?) - TShark er nok bedre til packet loss
                 capture_output=True,
                 text=True,
                 timeout=10000
@@ -198,41 +144,8 @@ class NetworkMonitorer:
             return rtt, jitter, packet_loss
 
         except Exception as e:
-            self.save_amr_error(amr.id, amr.ip, "NETWORK_MEASUREMENT_ERROR", str(e))
+            self.save_amr_error(amr.ip, "NETWORK_MEASUREMENT_ERROR", str(e))
             return 0.0, 0.0, 100.0
-
-    # Note: vi skal i stedet bruge RaspberryPi.get_signal_metrics()
-    # def get_raspi_metrics(self, amr: AMR):
-    #     """
-    #     Henter signal-metrics fra Raspberry Pi.
-
-    #     Eksempel på JSON:
-    #     {
-    #         "rssi": -71.0,
-    #         "quality": 39.0,
-    #         "noise": None
-    #     }
-
-    #     RSSI bruges også som signal_strength.
-    #     Noise må gerne være None.
-    #     """
-
-    #     url = f"http://{amr.raspi_ip}:5000/api/status"
-
-    #     headers = {
-    #     "Authorization": "Bearer YOUR_RASPBERRY_PI_TOKEN"
-    #     }
-
-    #     response = requests.get(url, headers=headers, timeout=5)
-    #     response.raise_for_status()
-
-    #     metrics = response.json()
-
-    #     rssi = metrics.get("rssi")
-    #     noise = metrics.get("noise")
-    #     signal_strength = rssi
-
-    #     return signal_strength, noise, rssi
 
     def monitor_one_amr(self, amr: AMR): # Fix this - We get JSON with data not tuple
         """Poll one AMR, measure network/Wi-Fi, and save to database."""
@@ -240,7 +153,7 @@ class NetworkMonitorer:
         rtt = None
         jitter = None
         packet_loss = None
-        signal_strength = None
+        quality = None
         noise = None
         rssi = None
         battery = None
@@ -264,7 +177,7 @@ class NetworkMonitorer:
             self.save_amr_error(amr.ip, "PING_ERROR", str(e))
 
         try:
-            signal_strength, noise, rssi = RaspberryPi.get_signal_metrics(amr) # this line
+            quality, noise, rssi = RaspberryPi.get_signal_metrics()
         except Exception as e:
             self.save_amr_error(amr.ip, "RASPI_METRICS_ERROR", str(e))
 
@@ -273,7 +186,7 @@ class NetworkMonitorer:
             rtt=rtt,
             jitter=jitter,
             packet_loss=packet_loss,
-            signal_strength=signal_strength,
+            quality=quality,
             noise=noise,
             rssi=None,
             battery=status['battery_percentage'],
