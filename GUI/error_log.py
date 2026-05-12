@@ -53,7 +53,8 @@ class ErrorLogPage(ctk.CTkFrame):
     def ip_field_with_padding(self, ip: str) -> str:
         """Return 'AMR {ip}' padded using format width 15 (IPv4 max length)."""
         ip_s = str(ip)
-        return f"AMR {ip_s:15s}"
+        print(f"AMR {ip_s:30}")  # debug print to verify padding
+        return f"AMR {ip_s:30}"
 
     # =========================
     # LOAD ERRORS (SMART UPDATE)
