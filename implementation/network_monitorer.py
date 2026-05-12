@@ -30,7 +30,7 @@ class NetworkMonitorer:
             db_amr_list = db.session.query(db_spec.AMR).all()
         
         for amr_spec in db_amr_list:
-            self.amr_list.append(AMR(amr_spec.ip,amr_spec.name,amr_spec.raspi_ip,self.auth_token))
+            self.amr_list.append(AMR(amr_spec.ip, amr_spec.name, amr_spec.raspi_ip, self.auth_token))
         
         return db_amr_list
 
