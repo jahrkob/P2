@@ -86,16 +86,18 @@ class NetworkMonitorer:
                 error_name = "API_ERROR"
                 error_desc = str(err)
 
+        # evt. tilføj noget error scoring inden den gemmer til databasen
+
             self.save_amr_error(amr.ip, error_name, error_desc) # id er ikke en ting mere (skal måske fjernes)
 
-    def measure_network_metrics(self, amr: AMR): # Der skal laves amr objekter med AMR classen
+    def measure_network_metrics(self, amr: AMR): # evt. brug tshark?
         """
         Measure RTT, jitter and packet loss using ping.
         Works on typical Linux ping output.
         """
         try:
             result = subprocess.run(
-                ["ping", "-c", "4", amr.ip], # sender 4 pakker. (Er det nok?)
+                ["ping", "-c", "4", amr.ip], # sender 4 pakker. (Er det nok?) - TShark er nok bedre til packet loss
                 capture_output=True,
                 text=True,
                 timeout=10000
@@ -168,7 +170,7 @@ class NetworkMonitorer:
             self.save_amr_error(amr.ip, "PING_ERROR", str(e))
 
         try:
-            quality, noise, rssi = RaspberryPi.get_signal_metrics(amr) # this line
+            quality, noise, rssi = RaspberryPi.get_signal_metrics()
         except Exception as e:
             self.save_amr_error(amr.ip, "RASPI_METRICS_ERROR", str(e))
 
