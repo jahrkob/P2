@@ -1,4 +1,5 @@
 from network_monitorer import NetworkMonitorer
+from amr import AMR
 
 nm = NetworkMonitorer("", "database.db")
 
@@ -17,5 +18,7 @@ nm = NetworkMonitorer("", "database.db")
 print(nm)
 
 nm.load_amr_database()
+
+amr1 = AMR("")
 
 print(nm.amr_list)
