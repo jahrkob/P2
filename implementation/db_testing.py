@@ -1,4 +1,6 @@
 from network_monitorer import NetworkMonitorer
+from application import monitor_amr_status
+from amr import AMR
 
 nm = NetworkMonitorer("", "database.db")
 
@@ -18,4 +20,13 @@ print(nm)
 
 nm.load_amr_database()
 
+amr_mir3 = AMR(
+    ip="192.168.100.51", 
+    name="MiR 3", 
+    raspi_ip="192.168.x.x",
+    auth_token=nm.auth_token
+)
+
 print(nm.amr_list)
+
+monitor_amr_status(nm, amr_mir3)

@@ -16,9 +16,10 @@ class AMR(InternetDevice):
             "accept": "application/json"
         }
         self.status = {}
+        self.is_on = True
 
-    def get_status(self):
-        response = requests.get(f"{self.base_url}/status", headers=self.headers)
+    def get_status(self, timeout=2):
+        response = requests.get(f"{self.base_url}/status", headers=self.headers, timeout=timeout)
 
         response.raise_for_status()
         self.status = response.json()
