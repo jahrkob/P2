@@ -1,7 +1,7 @@
 from network_monitorer import NetworkMonitorer
 from amr import AMR
 
-nm = NetworkMonitorer("", "database.db", "ZGlzdHJpYnV0b3I6NjJmMmYwZjFlZmYxMGQzMTUyYzk1ZjZmMDU5NjU3NmU0ODJiYjhlNDQ4MDY0MzNmNGNmOTI5NzkyODM0YjAxNA==")
+nm = NetworkMonitorer("", "ZGlzdHJpYnV0b3I6NjJmMmYwZjFlZmYxMGQzMTUyYzk1ZjZmMDU5NjU3NmU0ODJiYjhlNDQ4MDY0MzNmNGNmOTI5NzkyODM0YjAxNA==")
 
 nm.add_amr_to_database("192.168.100.51", "MiR 3", "192.168.x.x")
 # nm.add_amr_to_database("192.168.100.135", "AMR_2", "192.168.200.126")
