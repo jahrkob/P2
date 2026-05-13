@@ -28,5 +28,5 @@ amr_mir3 = AMR(
 
 print(nm.amr_list)
 
-nm.monitor_one_amr(amr_mir3)
+# nm.monitor_one_amr(amr_mir3)
 nm.active_monitoring(5, 10, True)

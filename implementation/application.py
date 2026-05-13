@@ -7,7 +7,7 @@ import time
 import requests
 
 
-def monitor_amr_status(monitor, amr, interval_seconds=1, response_timeout_seconds=2):
+def monitor_amr_status(monitor: NetworkMonitorer, amr: AMR, interval_seconds=1, response_timeout_seconds=2):
     while True:
         try:
             amr.get_status(timeout=response_timeout_seconds)
