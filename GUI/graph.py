@@ -172,11 +172,13 @@ class GraphPage(ctk.CTkFrame):
                     padding = timedelta(minutes=5)
                 ax.set_xlim(times[0] - padding, times[-1] + padding)
 
-            import matplotlib.dates as mdates
-            ax.xaxis.set_major_locator(mdates.MinuteLocator(interval=1))
-            ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
-            fig.autofmt_xdate()
-            fig.tight_layout()
+                import matplotlib.dates as mdates
+                locator = mdates.AutoDateLocator()
+                formatter = mdates.ConciseDateFormatter(locator)
+                ax.xaxis.set_major_locator(locator)
+                ax.xaxis.set_major_formatter(formatter)
+                fig.autofmt_xdate()
+                fig.tight_layout()
         else:
             fig, axes = plt.subplots(len(self.current_metrics), 1, figsize=(10, 4 * len(self.current_metrics)), sharex=True)
             self.figure = fig
@@ -211,8 +213,10 @@ class GraphPage(ctk.CTkFrame):
 
             axes[-1].set_xlabel("Time")
             import matplotlib.dates as mdates
-            axes[-1].xaxis.set_major_locator(mdates.MinuteLocator(interval=1))
-            axes[-1].xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+            locator = mdates.AutoDateLocator()
+            formatter = mdates.ConciseDateFormatter(locator)
+            axes[-1].xaxis.set_major_locator(locator)
+            axes[-1].xaxis.set_major_formatter(formatter)
             fig.autofmt_xdate()
             fig.tight_layout()
 

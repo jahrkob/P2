@@ -64,13 +64,7 @@ class GUI(ctk.CTk):
         auth_token = 'Basic ZGlzdHJpYnV0b3I6NjJmMmYwZjFlZmYxMGQzMTUyYzk1ZjZmMDU5NjU3NmU0ODJiYjhlNDQ4MDY0MzNmNGNmOTI5NzkyODM0YjAxNA==' # should be configurable in settings
         self.network_monitorer = NetworkMonitorer(fleet_manager_ip = self.fleetManager_ip, auth_token = auth_token)
 
-
-
-        #self.network_monitorer.add_amr_to_database('192.168.100.51','AMR ER Ability', '')
-
         start_map = self.network_monitorer.get_map()
-
-        #self.network_monitorer.add_amr_to_database('192.168.100.51','AMR ER Ability', '')
 
         # ===== PAGES =====
         self.frames = {}
@@ -212,7 +206,7 @@ class GUI(ctk.CTk):
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
 
-            amr_rows = cursor.execute("SELECT ip, name, raspi_ip FROM amr ORDER BY ip ASC LIMIT 10").fetchall()
+            amr_rows = cursor.execute("SELECT ip, name, raspi_ip FROM amr ORDER BY ip ASC").fetchall()
             latest_data_rows = cursor.execute("SELECT * FROM data ORDER BY timestamp DESC, id DESC").fetchall()
             latest_error_rows = cursor.execute("SELECT * FROM error ORDER BY timestamp DESC, id DESC").fetchall()
 
