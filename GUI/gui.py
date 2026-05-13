@@ -22,6 +22,7 @@ from overview import OverviewPage
 from error_log import ErrorLogPage
 from map import MapPage
 from graph import GraphPage
+from settings import SettingsPage
 
 # Set app theme to dark mode
 ctk.set_appearance_mode("dark")
@@ -60,10 +61,14 @@ class GUI(ctk.CTk):
 
         ##### Network monitorer #####
         self.fleetManager_ip = '' # should be configurable in settings
-        auth_token = 'Basic ZGlzdHJpYnV0b3I6NjJmMmYwZjFlZmYxMGQzMTUyYzk1ZjZmMDU5NjU3NmU0ODJiYjhlNDQ4MDY0MzNmNGnmOTI5NzkyODM0YjAxNA==' # should be configurable in settings
+        auth_token = 'Basic ZGlzdHJpYnV0b3I6NjJmMmYwZjFlZmYxMGQzMTUyYzk1ZjZmMDU5NjU3NmU0ODJiYjhlNDQ4MDY0MzNmNGNmOTI5NzkyODM0YjAxNA==' # should be configurable in settings
         self.network_monitorer = NetworkMonitorer(fleet_manager_ip = self.fleetManager_ip, auth_token = auth_token)
 
+        #self.network_monitorer.add_amr_to_database('192.168.100.51','AMR ER Ability', '')
+
         start_map = self.network_monitorer.get_map()
+
+        #self.network_monitorer.add_amr_to_database('192.168.100.51','AMR ER Ability', '')
 
         # ===== PAGES =====
         self.frames = {}

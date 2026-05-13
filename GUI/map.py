@@ -49,8 +49,8 @@ class MapPage(ctk.CTkFrame):
         # self.canvas.bind("<MouseWheel>", self.zoom)
 
 
-    def __create_canvas(self):
-        canvas = ctk.CTkCanvas(self)
+    def __create_canvas(self, bg='#333333', highlightthickness = 0):
+        canvas = ctk.CTkCanvas(self, bg=bg, highlightthickness=highlightthickness)
         canvas.pack(expand=True, fill='both')
         return canvas
 
