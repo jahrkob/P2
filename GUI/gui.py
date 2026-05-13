@@ -206,7 +206,7 @@ class GUI(ctk.CTk):
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
 
-            amr_rows = cursor.execute("SELECT ip, name, raspi_ip FROM amr ORDER BY ip ASC").fetchall()
+            amr_rows = cursor.execute("SELECT ip, name, raspi_ip FROM amr ORDER BY ip ASC LIMIT 20").fetchall()
             latest_data_rows = cursor.execute("SELECT * FROM data ORDER BY timestamp DESC, id DESC").fetchall()
             latest_error_rows = cursor.execute("SELECT * FROM error ORDER BY timestamp DESC, id DESC").fetchall()
 
