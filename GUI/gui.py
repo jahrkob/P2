@@ -64,6 +64,8 @@ class GUI(ctk.CTk):
         auth_token = 'Basic ZGlzdHJpYnV0b3I6NjJmMmYwZjFlZmYxMGQzMTUyYzk1ZjZmMDU5NjU3NmU0ODJiYjhlNDQ4MDY0MzNmNGNmOTI5NzkyODM0YjAxNA==' # should be configurable in settings
         self.network_monitorer = NetworkMonitorer(fleet_manager_ip = self.fleetManager_ip, auth_token = auth_token)
 
+
+
         #self.network_monitorer.add_amr_to_database('192.168.100.51','AMR ER Ability', '')
 
         start_map = self.network_monitorer.get_map()
@@ -260,7 +262,7 @@ class GUI(ctk.CTk):
                     "loss": packet_loss,
                     "jitter": jitter,
                     "battery": None if latest_data is None else latest_data["battery"],
-                    "signal_strength": None if latest_data is None else latest_data["signal_strength"],
+                    "signal_strength": None if latest_data is None else latest_data["quality"],
                     "rssi": None if latest_data is None else latest_data["rssi"],
                 }
             )
