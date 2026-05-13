@@ -201,8 +201,7 @@ class NetworkMonitorer:
         )
 
         print(
-            f"{amr.name} | "
-            f"Battery: {battery} | "
+            f"{amr.name} ({amr.ip}) | "
             f"Pos: ({status['position']['x']}, {status['position']['y']}) | "
             f"RTT: {rtt} ms | "
             f"Jitter: {jitter} ms | "
