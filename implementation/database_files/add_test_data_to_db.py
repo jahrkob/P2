@@ -1,5 +1,6 @@
 from Database_specification import db, app, Data, AMR, Error
 import random
+from datetime import datetime, timedelta
 
 """
 
@@ -34,41 +35,56 @@ Descriptions = [
 ]
 
 
+if __name__ == '__main__':
+    AMR_list = []
 
-AMR_list = []
+    with app.app_context():
+        db.drop_all() # remove current tables in database.db
+        db.create_all() # create new tables in database.db
 
-with app.app_context():
-    db.drop_all() # remove current tables in database.db
-    db.create_all() # create new tables in database.db
+        for i in range(2,255):
+            new_amr = AMR(ip=f'192.168.1.{i}',name=f'AMR #{i}',raspi_ip=f'192.168.2.{i}')
+            AMR_list.append(new_amr)
+            db.session.add(new_amr)
+        db.session.commit()
 
-    for i in range(2,255):
-        new_amr = AMR(ip=f'192.168.1.{i}',name=f'AMR #{i}',raspi_ip=f'192.168.2.{i}')
-        AMR_list.append(new_amr)
-        db.session.add(new_amr)
-    db.session.commit()
+        # Create test data with timestamps spread across 1 hour
+        base_time = datetime.now() - timedelta(hours=1)
+        
+        for i in range(1000):
+            # Spread timestamps across 60 minutes (3600 seconds)
+            time_offset = timedelta(seconds=(i / 1000) * 3600)
+            timestamp = base_time + time_offset
+            
+            new_data = Data(
+                amr_ip=AMR_list[i%253].ip,
+                timestamp=timestamp,
+            )
+        
+        for i in range(1000):
+            new_data = Data(
+                amr_ip=AMR_list[i%253].ip,
+                rtt=random.random()*40,
+                jitter=random.random()*10,
+                packet_loss=random.random()*0.1,
+                quality=random.random()*(-72),
+                noise=random.random()*(-80),
+                battery=(1000-i)/1000,
+                pos_x=0.2*i,
+                pos_y=-0.04*i,
+                timestamp=datetime.now()+timedelta(seconds=i)
+            )
+            db.session.add(new_data)
+        db.session.commit()
 
-    for i in range(1000):
-        new_data = Data(
-            amr_ip=AMR_list[i%253].ip,
-            rtt=random.random()*40,
-            jitter=random.random()*10,
-            packet_loss=random.random()*0.1,
-            quality=random.random()*(-72),
-            noise=random.random()*(-80),
-            battery=(1000-i)/1000,
-            pos_x=0.2*i,
-            pos_y=-0.04*i
-        )
-        db.session.add(new_data)
-    db.session.commit()
-
-    for i in range(100):
-        error_type = random.randint(0,9)
-        amr_ip = random.randint(2,254)
-        new_error = Error(
-            amr_ip=f'192.168.1.{amr_ip}',
-            error=ErrorTypes[error_type],
-            error_desc=Descriptions[error_type]
-        )
-        db.session.add(new_error)
-    db.session.commit()
+        for i in range(100):
+            error_type = random.randint(0,9)
+            amr_ip = random.randint(2,254)
+            new_error = Error(
+                amr_ip=f'192.168.1.{amr_ip}',
+                error=ErrorTypes[error_type],
+                error_desc=Descriptions[error_type],
+                timestamp=datetime.now()+timedelta(seconds=i)
+            )
+            db.session.add(new_error)
+        db.session.commit()
