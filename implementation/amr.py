@@ -1,5 +1,4 @@
 import requests
-from internet_device import InternetDevice
 import threading
 
 import sys
