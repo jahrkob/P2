@@ -5,10 +5,16 @@ import sqlalchemy as sql
 from datetime import datetime
 from pathlib import Path
 
-database_path = Path(__file__).resolve().parent / 'instance' / 'database.db'
+BASE_DIR = Path(__file__).resolve().parent
+
+INSTANCE_PATH = BASE_DIR / 'instance'
+INSTANCE_PATH.mkdir(exist_ok=True)
+
+DB_PATH = INSTANCE_PATH / "database.db"
 
 app = Flask(__name__, instance_relative_config=True)
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{database_path}'
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_PATH}'
+
 db = SQLAlchemy(app)
 #api = Api(app) # dont need API anymore since it runs on the fleet managers device
 
