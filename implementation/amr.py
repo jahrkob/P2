@@ -74,7 +74,7 @@ class AMR(InternetDevice):
         else:
             return(f"Error {response.status_code}: {response.text}")
     
-    def get_working_map(self, timeout = 0, map_guid="7ecbf116-0d8e-11f1-b640-000129922d00"):
+    def get_working_map(self, timeout = 1, map_guid="7ecbf116-0d8e-11f1-b640-000129922d00"):
         response = requests.get(f"{self.base_url}/maps/{map_guid}", headers=self.headers,timeout=timeout)
 
         if response.status_code == 200:
