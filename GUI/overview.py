@@ -31,33 +31,81 @@ class OverviewPage(ctk.CTkFrame):
     def _status_style(self, status):
         status_text = str(status or "").upper()
         if status_text == "ONLINE":
-            return "#1f8f4c", "#184f2f", "#c9f7db", "#2ecc71"
+            return "#1f8f4c", "#184f2f", "#e7fff0", "#2ecc71"
+        if status_text == "WARNING":
+            return "#d4a72c", "#6a5200", "#fff3c4", "#f1c24b"
         if status_text == "CRITICAL":
             return "#c94f4f", "#6f2323", "#ffe1e1", "#ff5e5e"
         return "#70757d", "#494c52", "#e4e7ea", "#9aa0a6"
 
     def _connection_state(self, status):
         status_text = str(status or "").upper()
-        return "offline" if status_text == "OFFLINE" else "online"
+        if status_text == "ONLINE":
+            return "stable"
+        if status_text == "WARNING":
+            return "degraded"
+        if status_text == "CRITICAL":
+            return "critical"
+        return "offline"
 
-    def _metric_style(self, value, status, lower_is_better=True, threshold=None):
-        status_text = str(status or "").upper()
-        if status_text == "OFFLINE":
-            return "#5d6066", "#d1d4d8", "#8a8f96"
-
-        value_num = None
+    def _metric_number(self, value):
         try:
-            value_num = float(value)
+            return float(value)
         except (TypeError, ValueError):
+            return None
+
+    def _health_style(self, score):
+        score_value = self._metric_number(score)
+        if score_value is None:
             return "#5d6066", "#d1d4d8", "#8a8f96"
-
-        if threshold is None:
-            threshold = 0
-
-        good = value_num <= threshold if lower_is_better else value_num >= threshold
-        if good:
-            return "#1f8f4c", "#dff6e7", "#2ecc71"
+        if score_value >= 90:
+            return "#1f8f4c", "#e7fff0", "#2ecc71"
+        if score_value >= 70:
+            return "#d4a72c", "#fff8da", "#f1c24b"
+        if score_value >= 50:
+            return "#d9822b", "#fff0df", "#ff9f43"
         return "#c94f4f", "#ffe1e1", "#ff5e5e"
+
+    def _metric_visual(self, metric_name, value):
+        metric_value = self._metric_number(value)
+        if metric_value is None:
+            return "#5d6066", "#d1d4d8", "#8a8f96", 0.0
+
+        metric_name = metric_name.lower()
+
+        if metric_name == "ping":
+            fill = min(max(metric_value / 150.0, 0.0), 1.0)
+            if metric_value < 20:
+                return "#1f8f4c", "#e7fff0", "#2ecc71", fill
+            if metric_value < 50:
+                return "#3c8f3c", "#efffe6", "#7fd34e", fill
+            if metric_value < 100:
+                return "#d4b63a", "#fff8d6", "#f1d04b", fill
+            if metric_value < 150:
+                return "#d9822b", "#ffe9d5", "#ff9f43", fill
+            return "#c94f4f", "#ffe1e1", "#ff5e5e", fill
+
+        if metric_name == "jitter":
+            fill = min(max(metric_value / 30.0, 0.0), 1.0)
+            if metric_value < 5:
+                return "#1f8f4c", "#e7fff0", "#2ecc71", fill
+            if metric_value < 15:
+                return "#d4b63a", "#fff8d6", "#f1d04b", fill
+            if metric_value < 30:
+                return "#d9822b", "#ffe9d5", "#ff9f43", fill
+            return "#c94f4f", "#ffe1e1", "#ff5e5e", fill
+
+        if metric_name == "loss":
+            fill = min(max(metric_value / 5.0, 0.0), 1.0)
+            if metric_value <= 1:
+                return "#1f8f4c", "#e7fff0", "#2ecc71", fill
+            if metric_value <= 3:
+                return "#d4b63a", "#fff8d6", "#f1d04b", fill
+            if metric_value <= 5:
+                return "#d9822b", "#ffe9d5", "#ff9f43", fill
+            return "#c94f4f", "#ffe1e1", "#ff5e5e", fill
+
+        return "#5d6066", "#d1d4d8", "#8a8f96", 0.0
 
     def _clear_cards(self):
         for widget in self.card_widgets:
@@ -68,8 +116,8 @@ class OverviewPage(ctk.CTkFrame):
         if self.on_graph_request is not None:
             self.on_graph_request(amr_ip)
 
-    def _create_metric_box(self, parent, label, value, status, threshold, unit="", lower_is_better=True):
-        bg_color, text_color, accent = self._metric_style(value, status, lower_is_better=lower_is_better, threshold=threshold)
+    def _create_metric_box(self, parent, label, value, unit, style_info):
+        bg_color, text_color, accent, fill = style_info
         box = ctk.CTkFrame(parent, fg_color=bg_color, corner_radius=12)
         box.grid_propagate(False)
         box.configure(width=105, height=64)
@@ -78,17 +126,14 @@ class OverviewPage(ctk.CTkFrame):
         display_value = "-" if value in (None, "", "-") else f"{value}{unit}"
         ctk.CTkLabel(box, text=display_value, font=("Arial", 16, "bold"), text_color=text_color).pack(pady=(1, 0))
         ctk.CTkProgressBar(box, height=8, progress_color=accent, fg_color="#3a3f45").pack(fill="x", padx=12, pady=(4, 8))
-        try:
-            value_num = float(value)
-            progress = max(0.0, min(1.0, 1.0 - (value_num / (threshold * 2 if threshold else 100.0)))) if lower_is_better else max(0.0, min(1.0, value_num / (threshold * 2 if threshold else 100.0)))
-            box.winfo_children()[-1].set(progress)
-        except (TypeError, ValueError):
-            box.winfo_children()[-1].set(0)
+        box.winfo_children()[-1].set(fill)
         return box
 
     def _create_card(self, amr):
         status = amr.get("status", "OFFLINE")
         badge_fg, badge_border, badge_text, dot = self._status_style(status)
+        health_score = amr.get("health_score")
+        health_fg, health_text, _ = self._health_style(health_score)
         amr_ip = str(amr.get("ip") or amr.get("amr_ip") or "")
         amr_name = amr.get("name") or amr_ip or "?"
         if isinstance(amr_name, str) and amr_name.upper().startswith("AMR #"):
@@ -120,8 +165,28 @@ class OverviewPage(ctk.CTkFrame):
             text_color="#e7eaee"
         ).pack(side="left", padx=16)
 
+        if health_score is not None:
+            ctk.CTkLabel(
+                top_row,
+                text=f"Health {health_score}/100",
+                font=("Arial", 13, "bold"),
+                fg_color=health_fg,
+                text_color=health_text,
+                corner_radius=10,
+                padx=12,
+                pady=6,
+            ).pack(side="left", padx=(0, 12))
+
         connection_state = self._connection_state(status)
-        connection_dot = "#2ecc71" if connection_state == "online" else "#9aa0a6"
+        if connection_state == "stable":
+            connection_dot = "#2ecc71"
+        elif connection_state == "degraded":
+            connection_dot = "#f1c24b"
+        elif connection_state == "critical":
+            connection_dot = "#ff5e5e"
+        else:
+            connection_dot = "#9aa0a6"
+
         status_row = ctk.CTkFrame(top_row, fg_color="transparent")
         status_row.pack(side="right")
         ctk.CTkLabel(status_row, text="●", font=("Arial", 20, "bold"), text_color=connection_dot).pack(side="left", padx=(0, 6))
@@ -134,9 +199,9 @@ class OverviewPage(ctk.CTkFrame):
         metric_row.pack(fill="x", padx=16, pady=(6, 10))
         metric_row.grid_columnconfigure((0, 1, 2), weight=1)
 
-        ping_box = self._create_metric_box(metric_row, "ping", amr.get("ping", "-"), status, 50, unit="", lower_is_better=True)
-        loss_box = self._create_metric_box(metric_row, "loss", amr.get("loss", "-"), status, 5, unit="", lower_is_better=True)
-        jitter_box = self._create_metric_box(metric_row, "jitter", amr.get("jitter", "-"), status, 10, unit="", lower_is_better=True)
+        ping_box = self._create_metric_box(metric_row, "ping", amr.get("ping", "-"), "ms", self._metric_visual("ping", amr.get("ping")))
+        loss_box = self._create_metric_box(metric_row, "loss", amr.get("loss", "-"), "%", self._metric_visual("loss", amr.get("loss")))
+        jitter_box = self._create_metric_box(metric_row, "jitter", amr.get("jitter", "-"), "ms", self._metric_visual("jitter", amr.get("jitter")))
 
         ping_box.grid(row=0, column=0, padx=(0, 8), sticky="ew")
         loss_box.grid(row=0, column=1, padx=8, sticky="ew")
@@ -144,6 +209,18 @@ class OverviewPage(ctk.CTkFrame):
 
         bottom_row = ctk.CTkFrame(card, fg_color="transparent")
         bottom_row.pack(fill="x", padx=16, pady=(0, 14))
+
+        if health_score is not None:
+            ctk.CTkLabel(
+                bottom_row,
+                text=f"Network score: {health_score}/100",
+                font=("Arial", 13, "bold"),
+                fg_color=health_fg,
+                text_color=health_text,
+                corner_radius=10,
+                padx=12,
+                pady=6,
+            ).pack(side="left")
 
         ctk.CTkButton(
             bottom_row,

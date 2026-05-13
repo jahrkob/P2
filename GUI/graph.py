@@ -71,8 +71,6 @@ class GraphPage(ctk.CTkFrame):
                 if packet_loss is None:
                     continue
 
-                packet_loss *= 100  # Convert to %
-
                 try:
                     dt = datetime.fromisoformat(timestamp_text)
                 except ValueError:

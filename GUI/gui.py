@@ -115,6 +115,33 @@ class GUI(ctk.CTk):
     def open_graph_for_amr(self, amr_ip):
         self.show_frame("graph", amr_ip)
 
+    def _calculate_network_health(self, ping, jitter, packet_loss):
+        ping_value = None if ping is None else float(ping)
+        jitter_value = None if jitter is None else float(jitter)
+        loss_value = None if packet_loss is None else float(packet_loss)
+
+        if ping_value is None and jitter_value is None and loss_value is None:
+            return "OFFLINE", None
+
+        ping_value = 0.0 if ping_value is None else ping_value
+        jitter_value = 0.0 if jitter_value is None else jitter_value
+        loss_value = 0.0 if loss_value is None else loss_value
+
+        score = 100.0
+        score -= ping_value * 0.2
+        score -= jitter_value * 1.5
+        score -= loss_value * 15.0
+        score = round(max(0.0, min(100.0, score)), 1)
+
+        if loss_value > 5 or ping_value > 150 or jitter_value > 30:
+            status = "CRITICAL"
+        elif loss_value > 3 or ping_value > 100 or jitter_value > 15:
+            status = "WARNING"
+        else:
+            status = "ONLINE"
+
+        return status, score
+
     def get_database_path(self):
         project_root = Path(__file__).resolve().parent.parent
         return project_root / "implementation" / "database_files" / "instance" / "database.db"
@@ -158,16 +185,9 @@ class GUI(ctk.CTk):
             latest_data = latest_data_by_ip.get(amr_ip)
             latest_error = latest_error_by_ip.get(amr_ip)
 
-            if latest_error is not None:
-                status = "CRITICAL"
-            elif latest_data is not None:
-                status = "ONLINE"
-            else:
-                status = "OFFLINE"
-
             packet_loss = None
             if latest_data is not None and latest_data["packet_loss"] is not None:
-                packet_loss = round(float(latest_data["packet_loss"]) * 100, 1)
+                packet_loss = round(float(latest_data["packet_loss"]), 1)
 
             jitter = None
             if latest_data is not None and latest_data["jitter"] is not None:
@@ -177,11 +197,14 @@ class GUI(ctk.CTk):
             if latest_data is not None and latest_data["rtt"] is not None:
                 ping = round(float(latest_data["rtt"]), 1)
 
+            status, health_score = self._calculate_network_health(ping, jitter, packet_loss)
+
             amrs.append(
                 {
                     "name": amr["name"],
                     "ip": amr_ip,
                     "status": status,
+                    "health_score": health_score,
                     "ping": ping,
                     "loss": packet_loss,
                     "jitter": jitter,
