@@ -6,6 +6,8 @@ from raspberry_pi_files.RaspberryPi import RaspberryPi
 from database_files.Database_specification import app, db
 import database_files.Database_specification as db_spec
 
+import threading
+
 class NetworkMonitorer:
     """Class to monitor the network and manage the fleet of AMRs."""
 
@@ -13,7 +15,9 @@ class NetworkMonitorer:
         self.fleet_manager_ip = fleet_manager_ip
         self.database = database
         self.auth_token = auth_token
-        self.amr_list: list[AMR] = []
+        self.amr_list_lock = threading.Lock()
+        with self.amr_list_lock:
+            self.amr_list: list[AMR] = []
         self.load_amr_database()
 
     def __str__(self):
@@ -30,7 +34,8 @@ class NetworkMonitorer:
             db_amr_list = db.session.query(db_spec.AMR).all()
         
         for amr_spec in db_amr_list:
-            self.amr_list.append(AMR(amr_spec.ip, amr_spec.name, amr_spec.raspi_ip, self.auth_token))
+            with self.amr_list_lock:
+                self.amr_list.append(AMR(amr_spec.ip, amr_spec.name, amr_spec.raspi_ip, self.auth_token))
         
         return db_amr_list
 
@@ -45,7 +50,8 @@ class NetworkMonitorer:
         except sqlalchemy.exc.IntegrityError as e:
             print(str(e).replace('\n', ' '))
 
-        self.amr_list.append(AMR(ip, name, raspi_ip, self.auth_token))
+        with self.amr_list_lock:
+            self.amr_list.append(AMR(ip, name, raspi_ip, self.auth_token))
 
     def remove_amr_from_database(self, ip):
         """Removes an AMR from all tables in the database"""

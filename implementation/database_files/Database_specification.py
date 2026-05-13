@@ -14,6 +14,7 @@ DB_PATH = INSTANCE_PATH / "database.db"
 
 app = Flask(__name__, instance_relative_config=True)
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_PATH}'
+
 db = SQLAlchemy(app)
 #api = Api(app) # dont need API anymore since it runs on the fleet managers device
 

@@ -1,5 +1,6 @@
 import requests
 from internet_device import InternetDevice
+import threading
 
 class AMR(InternetDevice):
     """Autonomous Mobile Robot."""
@@ -16,13 +17,19 @@ class AMR(InternetDevice):
             "accept": "application/json"
         }
         self.status = {}
+        self.is_on = True
+        self.lock = threading.Lock()
 
-    def get_status(self):
-        response = requests.get(f"{self.base_url}/status", headers=self.headers)
+    def get_status(self, timeout=2):
+        response = requests.get(f"{self.base_url}/status", headers=self.headers, timeout=timeout)
 
         response.raise_for_status()
-        self.status = response.json()
-        self.status_code = response.status_code
+        status = response.json()
+
+        with self.lock:
+            self.status = status
+            self.status_code = response.status_code
+            self.is_on = True
 
         # map_id er måske ikke så vigtig
 
@@ -40,7 +47,9 @@ class AMR(InternetDevice):
     def get_errors(self):
         if not self.status: # Opdaterer status hvis den ikke har en endnu, da errors ellers ville være tom. Kan evt. fjernes
             self.get_status() 
-        return self.status.get("errors", []) or []
+        
+        with self.lock:
+            return self.status.get("errors", []) or []
 
     def get_battery_percentage(self):
         return self.status.get("battery_percentage")
