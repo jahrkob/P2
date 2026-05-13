@@ -183,7 +183,7 @@ class NetworkMonitorer:
             self.save_amr_error(amr.ip, "PING_ERROR", str(e))
 
         try:
-            quality, noise, rssi = RaspberryPi.get_signal_metrics()
+            quality, noise, rssi = RaspberryPi(f"{amr.name}'s rasp", amr.raspi_ip, 5000).get_signal_metrics()
         except Exception as e:
             self.save_amr_error(amr.ip, "RASPI_METRICS_ERROR", str(e))
 
