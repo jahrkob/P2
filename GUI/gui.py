@@ -103,12 +103,6 @@ class GUI(ctk.CTk):
             command=partial(self.show_frame, "map")
         ).pack(pady=5, padx=10, fill="x")
 
-        ctk.CTkButton(
-            self.sidebar,
-            text="Graph",
-            command=partial(self.show_frame, "graph")
-        ).pack(pady=5, padx=10, fill="x")
-
     # =========================
     # Page switching
     # =========================
