@@ -3,9 +3,14 @@ from typing import Optional, TypedDict
 
 ##### importing same project files #####
 import sys
-cur_parent_dirs = sys.path[0].split('\\')
+
+if sys.platform == "linux":
+    file_sep = '/'
+else:
+    file_sep = '\\'
+cur_parent_dirs = sys.path[0].split(file_sep)
 parent_dir_index = cur_parent_dirs.index("P2")
-sys.path.append("\\".join(cur_parent_dirs[0:parent_dir_index+1])) # allows imports from P2 folder
+sys.path.append(file_sep.join(cur_parent_dirs[0:parent_dir_index+1])) # allows imports from P2 folder
 
 from implementation.internet_device import InternetDevice
 
