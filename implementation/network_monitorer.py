@@ -238,8 +238,8 @@ class NetworkMonitorer:
             f"Quality: {quality} | "
             f"Noise: {noise} | "
             f"RSSI: {rssi} | "
-            f"Battery: {battery}"
-            f"Pos: ({pos_x}, {pos_y}) | "
+            f"Battery: {battery} | "
+            f"Pos: ({pos_x}, {pos_y})"
         )
 
     def active_monitoring(self, interval_seconds=5, cycles=None, reload_from_database=True):
