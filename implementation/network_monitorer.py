@@ -208,9 +208,12 @@ class NetworkMonitorer:
             self.save_amr_error(amr.ip, "RASPI_METRICS_ERROR", str(e))
 
         if status:
-            battery = status['battery_percentage'] # måske skift til at bruge get, hvis der opstår fejl (burde dog ikke være nødvendigt)
-            pos_x = status['position']['x']
-            pos_y = status['position']['y']
+            try:
+                battery = status['battery_percentage'] # måske skift til at bruge get, hvis der opstår fejl (burde dog ikke være nødvendigt)
+                pos_x = status['position']['x']
+                pos_y = status['position']['y']
+            except KeyError as e:
+                self.save_amr_error(amr.ip, "STATUS_FORMAT_ERROR", f"Missing key: {e}")
         else:
             self.save_amr_error(amr.ip, "GET_STATUS_ERROR", f"{amr}.get_status() failed")
 
