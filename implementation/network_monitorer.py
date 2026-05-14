@@ -1,5 +1,6 @@
 import sqlite3, json, time, subprocess, sqlalchemy # sqlite3 er ikke længere i brug, og internet_device er fjernet (bruges gennem raspi og amr)
 from datetime import datetime
+from enum import StrEnum
 
 ##### importing same project files #####
 import sys
@@ -19,6 +20,11 @@ import pytest
 import unittest
 from unittest.mock import patch, Mock
 from http import HTTPStatus
+
+class TableNames(StrEnum):
+    amr = 'amr'
+    error = 'error'
+    data = 'data'
 
 
 class NetworkMonitorer:
@@ -55,12 +61,12 @@ class NetworkMonitorer:
                 # print("DB URL:", db.engine.url) # for testing
                 db.session.add(db_spec.AMR(ip=ip,name=name,raspi_ip=raspi_ip))
                 db.session.commit()
-            # self.amr_list.append(AMR(ip=ip,name=name,raspi_ip=raspi_ip)) # add to list in memory
+                self.amr_list.append(AMR(ip, name, raspi_ip, self.auth_token))
+                return True
         
         except sqlalchemy.exc.IntegrityError as e:
             print(str(e).replace('\n', ' '))
-
-        self.amr_list.append(AMR(ip, name, raspi_ip, self.auth_token))
+            return False
 
     def remove_amr_from_database(self, ip):
         """Removes an AMR from all tables in the database"""
@@ -72,12 +78,29 @@ class NetworkMonitorer:
                 if delete_user:
                     db.session.delete(delete_user)
                     db.session.commit()
+                    return True
                 else:
                     print(f'AMR with IP={ip} does not exist - cannot be deleted')
+                    return False
 
         except Exception as e:
             print("Error: ", e)
+            return False
 
+    def check_value_exists(self, table_name:TableNames, column:str,value):
+        table_map = {
+            TableNames.amr: db_spec.AMR,
+            TableNames.data:db_spec.Data,
+            TableNames.error:db_spec.Error
+        }
+
+        table = table_map[table_name]
+        with app.app_context():
+            col = getattr(table, column)
+            if not col:
+                raise ValueError(f'{column} is not a column of table {table}')
+            return db.session.query(sqlalchemy.exists().where(col == value)).scalar()
+        
     # Jeg antager at det bare er alt i "data" table i databasen. Kan nemt rettes, hvis nødvendigt.
     def save_amr_data(self, amr_ip, rtt, jitter, packet_loss, quality, noise, rssi, battery, pos_x, pos_y):
         """Saves all network data to database"""

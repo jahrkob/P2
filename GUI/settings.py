@@ -1,6 +1,7 @@
 ##### external dependencies #####
 import customtkinter as ctk
 import re
+import sqlalchemy
 
 
 ##### importing same project files #####
@@ -9,8 +10,11 @@ cur_parent_dirs = sys.path[0].split('\\')
 parent_dir_index = cur_parent_dirs.index("P2")
 sys.path.append("\\".join(cur_parent_dirs[0:parent_dir_index+1])) # allows imports from P2 folder
 
-from implementation.network_monitorer import NetworkMonitorer
+from implementation.network_monitorer import NetworkMonitorer, TableNames
 
+# =======================================================================
+#                               Popup
+#========================================================================
 
 class Popup(ctk.CTkFrame):
     # this popup is created using CLAUDE
@@ -18,6 +22,8 @@ class Popup(ctk.CTkFrame):
     A modal popup rendered as an overlay directly on the parent window.
     Uses place() to cover the entire parent and centers a card in the middle.
  
+    To use it is preferred to make classes that inherit from popup and places elements in self.content.
+
     Usage:
         popup = Popup(parent, title="My Popup", width=400, height=300)
  
@@ -33,12 +39,13 @@ class Popup(ctk.CTkFrame):
         width: int = 400,
         height: int = 300,
         corner_radius: int = 16,
+        background = "#1e1e1e"
     ):
         # The outer frame acts as the darkening overlay — covers the whole parent
         super().__init__(
             parent,
-            corner_radius=0,
-            fg_color=("gray10", "gray10"),
+            corner_radius=corner_radius,
+            fg_color=background,
             bg_color="transparent",
         )
         self._parent = parent
@@ -53,10 +60,10 @@ class Popup(ctk.CTkFrame):
         self._dim = ctk.CTkCanvas(
             self,
             highlightthickness=0,
-            bg="#000000",
+            bg=background,
         )
         self._dim.place(x=0, y=0, relwidth=1, relheight=1)
-        self._dim.bind("<Configure>", self._draw_dim)
+        # self._dim.bind("<Configure>", self._draw_dim)
  
         # Card frame centered in the overlay
         self._card = ctk.CTkFrame(
@@ -99,6 +106,7 @@ class Popup(ctk.CTkFrame):
  
             ctk.CTkFrame(
                 self._card,
+                corner_radius=corner_radius,
                 height=1,
                 fg_color=("gray80", "gray25"),
             ).pack(fill="x")
@@ -113,18 +121,18 @@ class Popup(ctk.CTkFrame):
  
     # ------------------------------------------------------------------
  
-    def _draw_dim(self, event=None):
-        """Redraws the stipple rectangle that simulates a dark overlay."""
-        self._dim.delete("all")
-        w = self._dim.winfo_width()
-        h = self._dim.winfo_height()
-        self._dim.create_rectangle(
-            0, 0, w, h,
-            fill="#000000",
-            stipple="gray50",   # 50% stipple ≈ semi-transparent black
-            outline="",
-            tags="dim",
-        )
+    # def _draw_dim(self, event=None):
+    #     """Redraws the stipple rectangle that simulates a dark overlay."""
+    #     self._dim.delete("all")
+    #     w = self._dim.winfo_width()
+    #     h = self._dim.winfo_height()
+    #     self._dim.create_rectangle(
+    #         0, 0, w, h,
+    #         fill="#000000",
+    #         stipple="gray50",   # 50% stipple ≈ semi-transparent black
+    #         outline="",
+    #         tags="dim",
+    #     )
  
     # ------------------------------------------------------------------
  
@@ -134,6 +142,23 @@ class Popup(ctk.CTkFrame):
         self.place_forget()
         self.destroy()
 
+# =======================================================================
+#                           Error Popup
+#========================================================================
+
+class ErrorPopup(Popup):
+    def __init__(self, parent, title, description="", width = 400, height = 300, corner_radius = 16):
+        super().__init__(parent, title, width, height, corner_radius)
+        self.description = description
+        if self.description:
+            self.description_box = ctk.CTkTextbox(self.content)
+            self.description_box.insert('0.0',self.description)
+            self.description_box.configure(state='disabled')
+            self.description_box.pack(pady=20,padx=20,fill='both',expand=True)
+
+# =======================================================================
+#                           ADD AMR Popup
+#========================================================================
 
 class AddAMRPopup(Popup):
     def __init__(self, parent, network_monitorer:NetworkMonitorer, title = "Add AMR", width = 400, height = 350, corner_radius = 16):
@@ -178,11 +203,58 @@ class AddAMRPopup(Popup):
         if not self.check_valid_Dev_EUI(dev_eui):
             Popup(self._parent,'Invalid Device EUI given', height=100)
             return
+        
+        if self.network_monitorer.check_value_exists(TableNames.amr,'ip',ip_adr):
+            ErrorPopup(self._parent,'Operation Failed', 'AMR with given IP-address already exists')
+            return
+        
+        if self.network_monitorer.check_value_exists(TableNames.amr,'raspi_ip',dev_eui):
+            ErrorPopup(self._parent,'Operation Failed', 'Given Device EUI is already listed under another AMR')
+            return
 
-        self.network_monitorer.add_amr_to_database(ip_adr,name,dev_eui)
+        if not self.network_monitorer.add_amr_to_database(ip_adr,name,dev_eui):
+            ErrorPopup(self._parent,'Operation Failed', 'Unknown error, check terminal.')
+        else:
+            self.close()
+
+# =======================================================================
+#                         Remove AMR Popup
+#========================================================================
+
+class RemoveAMRPopup(Popup):
+    def __init__(self, parent, network_monitorer:NetworkMonitorer, title = "Remove AMR", width = 400, height = 250, corner_radius = 16):
+        super().__init__(parent, title, width, height, corner_radius)
+        self.network_monitorer = network_monitorer
+
+        ctk.CTkLabel(self.content, text='AMR IP-address').pack(pady=(10,0))
+        self.ip_entry = ctk.CTkEntry(self.content, placeholder_text='ex. 192.168.100.52', width=280)
+        self.ip_entry.pack()
+
+        self.submit_button = ctk.CTkButton(self.content,text='Delete', command=self.submit)
+        self.submit_button.pack(pady=(30,0))
+    
+    def check_valid_IP_address(self, ip_adr:str):
+        IP_ADDRESS_PATTERN = re.compile(r'(\b25[0-5]|\b2[0-4][0-9]|\b[01]?[0-9][0-9]?)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}')
+        return bool(IP_ADDRESS_PATTERN.match(ip_adr))
+
+    def submit(self):
+        ip_adr = self.ip_entry.get()
+        
+        if not self.check_valid_IP_address(ip_adr):
+            Popup(self._parent,'Invalid IP address given', height=100)
+            return
+    
+        if self.network_monitorer.check_value_exists(TableNames.amr,'ip',ip_adr):
+            ErrorPopup(self._parent,'Operation Failed', 'AMR with given IP-address already exists')
+            return
+
+        self.network_monitorer.remove_amr_from_database(ip_adr)
         self.close()
 
 
+# =======================================================================
+#                           Settings page
+#========================================================================
 
 class SettingsPage(ctk.CTkFrame):
     def __init__(self, master, network_monitorer:NetworkMonitorer, width = 200, height = 200, corner_radius = None, border_width = None, bg_color = "transparent", fg_color = None, border_color = None, background_corner_colors = None, overwrite_preferred_drawing_method = None, **kwargs):
@@ -190,13 +262,23 @@ class SettingsPage(ctk.CTkFrame):
         self.network_monitorer = network_monitorer
         
         self.title_font = ctk.CTkFont('Arial', size=40, weight='bold')
+        self.setting_font = ctk.CTkFont('Arial', size=18, weight='bold')
+        setting_pady = (10,10)
 
         ctk.CTkLabel(self,text='Settings',font=self.title_font).pack(pady=(10,20))
-        ctk.CTkLabel(self,text='Start monitoring new AMR').pack()
-        self.add_amr_button = ctk.CTkButton(self,width=200, text='Add amr', command=self.add_amr_popup)
-        self.add_amr_button.pack()
 
-    def add_amr_popup(self):
+        ctk.CTkLabel(self,text='Start monitoring new AMR', font=self.setting_font).pack(pady=(setting_pady[0],0))
+        self.add_amr_button = ctk.CTkButton(self,width=200, text='Add AMR', command=self.popup_add_amr)
+        self.add_amr_button.pack(pady=(0,setting_pady[1]))
+
+        ctk.CTkLabel(self,text='Stop monitoring new AMR', font=self.setting_font).pack(pady=(setting_pady[0],0))
+        self.add_amr_button = ctk.CTkButton(self,width=200, text='Remove AMR', command=self.popup_remove_amr)
+        self.add_amr_button.pack(pady=(0,setting_pady[1]))
+
+    def popup_add_amr(self):
         AddAMRPopup(self,self.network_monitorer)
+    
+    def popup_remove_amr(self):
+        RemoveAMRPopup(self,self.network_monitorer)
 
 
