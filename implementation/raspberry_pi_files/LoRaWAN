@@ -79,9 +79,4 @@ if join_network(max_attempts=5, base_wait=5):
 else:
     print("Aborting — could not join network.")
 
-
-
-
-
-
 port.close()
