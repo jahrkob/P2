@@ -33,7 +33,6 @@ class NetworkMonitorer:
 
     def __init__(self, fleet_manager_ip, auth_token = None): # evt kom tilbage til init, da vi lige skal være sikre på hvilke parametre den skal bruge
         self.fleet_manager_ip = fleet_manager_ip
-        #self.database = database
         self.auth_token = auth_token
         self.amr_list_lock = threading.Lock()
         with self.amr_list_lock:
@@ -182,10 +181,10 @@ class NetworkMonitorer:
         quality = None
         noise = None
         rssi = None
-        status = None
         battery = None
         pos_x = None
         pos_y = None
+        status = None
 
         try:
             #amr.update_status() # vi skal finde ud af om vi bruge get eller update
@@ -209,9 +208,9 @@ class NetworkMonitorer:
             self.save_amr_error(amr.ip, "RASPI_METRICS_ERROR", str(e))
 
         if status:
-            battery=status['battery_percentage'], # måske skift til at bruge get, hvis der opstår fejl (burde dog ikke være nødvendigt)
-            pos_x=status['position']['x'],
-            pos_y=status['position']['y']
+            battery = status['battery_percentage'] # måske skift til at bruge get, hvis der opstår fejl (burde dog ikke være nødvendigt)
+            pos_x = status['position']['x']
+            pos_y = status['position']['y']
         else:
             self.save_amr_error(amr.ip, "GET_STATUS_ERROR", f"{amr}.get_status() failed")
 

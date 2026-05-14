@@ -42,7 +42,6 @@ if __name__ == "__main__":
 
     monitor = NetworkMonitorer(
         fleet_manager_ip="192.168.100.123",
-        database="/implementation/database_files/instance/database.db",
         auth_token="Basic ZGlzdHJpYnV0b3I6NjJmMmYwZjFlZmYxMGQzMTUyYzk1ZjZmMDU5NjU3NmU0ODJiYjhlNDQ4MDY0MzNmNGNmOTI5NzkyODM0YjAxNA"
     )
 
