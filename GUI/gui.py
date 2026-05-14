@@ -265,6 +265,7 @@ class GUI(ctk.CTk):
                     "battery": None if latest_data is None else latest_data["battery"],
                     "signal_strength": None if latest_data is None else latest_data["quality"],
                     "rssi": None if latest_data is None else latest_data["rssi"],
+                    "pos": None if latest_data is None else (latest_data["pos_x"], latest_data["pos_y"]),
                 }
             )
 
