@@ -37,7 +37,7 @@ def join_network(max_attempts=5, base_wait=10):
             time.sleep(10)
         elif attempt < max_attempts:
             backoff = base_wait + attempt * 5
-            print(f"  Join failed. Waiting {backoff}s before retry...")
+            print(f"  Join failed. Waiting {backoff}s before retry")
             time.sleep(backoff)
 
     print("✗ All join attempts failed.")
@@ -71,7 +71,7 @@ send_at('AT+DR=5')
 # Join with retry logic
 print("Joining network")
 if join_network(max_attempts=5, base_wait=5):
-    print("Sending data...")
+    print("Sending data")
     # 00 = unconfirmed uplink (fire and forget, no ACK wait)
     response = send_at('AT+SENDB=00,02,5,48656C6C6F', wait=3)
     # Only check for a downlink if you need one — remove this line to tighten the loop further
