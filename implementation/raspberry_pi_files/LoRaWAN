@@ -1,5 +1,6 @@
 import serial
 import time
+import struct
 
 port = serial.Serial('/dev/ttyUSB0', 9600, timeout=3) #'/dev/ttyUSB0' is the typical port for a USB-to-serial adapter on Linux (Don't know if there is a universal solution)
 
@@ -21,7 +22,7 @@ def join_network(max_attempts=5, base_wait=10):
     Returns True if joined, False if all attempts failed.
     """
     for attempt in range(1, max_attempts + 1):
-        print(f"Join attempt {attempt}/{max_attempts}...")
+        print(f"Join attempt {attempt}/{max_attempts}.")
         response = send_at('AT+JOIN', wait=base_wait)
 
         if 'Network joined' in response or 'JOINED' in response.upper():
@@ -40,7 +41,7 @@ def join_network(max_attempts=5, base_wait=10):
             print(f"  Join failed. Waiting {backoff}s before retry.")
             time.sleep(backoff)
 
-    print("✗ All join attempts failed.")
+    print("All join attempts failed.")
     return False
 
 def check_downlink(response):
@@ -72,10 +73,18 @@ send_at('AT+DR=5')
 print("Joining network")
 if join_network(max_attempts=5, base_wait=5):
     print("Sending data")
+
+    # Example payload: RSSI, Noise, Quality (3 bytes total) for test
+    rssi    = -72   # example: dBm, negative
+    noise   = -95   # example: dBm, negative
+    quality = 68    # example: 0-100 percentage
+
+    payload_bytes = struct.pack('bbB', rssi, noise, quality)
+    payload_hex   = payload_bytes.hex().upper()
+    # e.g. "B8A144" — send this as AT+SENDB=00,02,3,B8A144
     # 00 = unconfirmed uplink (fire and forget, no ACK wait)
-    response = send_at('AT+SENDB=00,02,5,48656C6C6F', wait=3)
-    # Only check for a downlink if you need one — remove this line to tighten the loop further
-    check_downlink(response)
+    response = send_at(f'AT+SENDB=00,02,3,{payload_hex}', wait=3)
+    
 else:
     print("Aborting — could not join network.")
 
