@@ -66,11 +66,18 @@ class NetworkMonitorer:
                 db.session.commit()
             # self.amr_list.append(AMR(ip=ip,name=name,raspi_ip=raspi_ip)) # add to list in memory
         
+                with self.amr_list_lock:
+                    self.amr_list.append(AMR(ip, name, raspi_ip, self.auth_token))
+
         except sqlalchemy.exc.IntegrityError as e:
+            with app.app_context():
+                db.session.rollback()
             print(str(e).replace('\n', ' '))
 
-        with self.amr_list_lock:
-            self.amr_list.append(AMR(ip, name, raspi_ip, self.auth_token))
+        except Exception as e:
+            with app.app_context():
+                db.session.rollback()
+            print("Error: ", e)
 
     def remove_amr_from_database(self, ip):
         """Removes an AMR from all tables in the database"""
@@ -79,13 +86,19 @@ class NetworkMonitorer:
         try: # try except ensures that data will only be deleted if it succeeds in deleting the specific AMR from ALL tables, else nothing is deleted
             with app.app_context():
                 delete_user = db.session.query(db_spec.AMR).filter_by(ip=ip).first()
+                
                 if delete_user:
                     db.session.delete(delete_user)
                     db.session.commit()
                 else:
                     print(f'AMR with IP={ip} does not exist - cannot be deleted')
 
+            with self.amr_list_lock:
+                self.amr_list = [amr for amr in self.amr_list if amr.ip != ip]
+
         except Exception as e:
+            with app.app_context():
+                db.session.rollback()
             print("Error: ", e)
 
     # Jeg antager at det bare er alt i "data" table i databasen. Kan nemt rettes, hvis nødvendigt.
