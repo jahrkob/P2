@@ -215,7 +215,7 @@ class NetworkMonitorer:
             except KeyError as e:
                 self.save_amr_error(amr.ip, "STATUS_FORMAT_ERROR", f"Missing key: {e}")
         else:
-            self.save_amr_error(amr.ip, "GET_STATUS_ERROR", f"{amr}.get_status() failed")
+            self.save_amr_error(amr.ip, "GET_STATUS_ERROR", "get_status() failed")
 
         self.save_amr_data(
             amr_ip=amr.ip,
@@ -232,12 +232,14 @@ class NetworkMonitorer:
 
         print(
             f"{amr.name} ({amr.ip}) | "
-            f"Pos: ({pos_x}, {pos_y}) | "
             f"RTT: {rtt} ms | "
             f"Jitter: {jitter} ms | "
             f"Packet loss: {packet_loss}% | "
+            f"Quality: {quality} | "
+            f"Noise: {noise} | "
             f"RSSI: {rssi} | "
             f"Battery: {battery}"
+            f"Pos: ({pos_x}, {pos_y}) | "
         )
 
     def active_monitoring(self, interval_seconds=5, cycles=None, reload_from_database=True):

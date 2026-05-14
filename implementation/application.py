@@ -77,3 +77,6 @@ if __name__ == "__main__":
 
     # Kontinuerlig monitorering af AMR-status hvert sekund
     monitor_amr_status(monitor, amr_mir3)
+
+    # Active monitoring
+    monitor.active_monitoring(5, 10, True)
