@@ -25,11 +25,11 @@ def join_network(max_attempts=5, base_wait=10):
         response = send_at('AT+JOIN', wait=base_wait)
 
         if 'Network joined' in response or 'JOINED' in response.upper():
-            print("✓ Join confirmed in response.")
+            print("Join confirmed in response.")
             return True
 
         if is_joined():
-            print("✓ Join confirmed via status query.")
+            print("Join confirmed via status query.")
             return True
 
         if 'busy' in response.lower():
@@ -45,7 +45,7 @@ def join_network(max_attempts=5, base_wait=10):
 
 def check_downlink(response):
     if '+RECV' in response:
-        print("↓ Downlink signalled — fetching details...")
+        print("Downlink signalled — fetching details")
         dl = send_at('AT+RECVB=?', wait=2)
         for line in dl.splitlines():
             if ':' in line:
@@ -69,7 +69,7 @@ send_at('AT+ADR=1')
 send_at('AT+DR=5')
 
 # Join with retry logic
-print("Joining network...")
+print("Joining network")
 if join_network(max_attempts=5, base_wait=5):
     print("Sending data...")
     # 00 = unconfirmed uplink (fire and forget, no ACK wait)
