@@ -1,0 +1,87 @@
+import serial
+import time
+
+port = serial.Serial('/dev/ttyUSB0', 9600, timeout=3)
+
+def send_at(cmd, wait=1):
+    port.write((cmd + '\r\n').encode())
+    time.sleep(wait)
+    response = port.read_all().decode(errors='ignore')
+    print(f">> {cmd}\n<< {response.strip()}\n")
+    return response
+
+def is_joined():
+    """Check join status via AT+NJS (join status query)."""
+    response = send_at('AT+NJS=?', wait=1)
+    return '1' in response
+
+def join_network(max_attempts=5, base_wait=10):
+    """
+    Attempt OTAA join with retries and exponential backoff.
+    Returns True if joined, False if all attempts failed.
+    """
+    for attempt in range(1, max_attempts + 1):
+        print(f"Join attempt {attempt}/{max_attempts}...")
+        response = send_at('AT+JOIN', wait=base_wait)
+
+        if 'Network joined' in response or 'JOINED' in response.upper():
+            print("✓ Join confirmed in response.")
+            return True
+
+        if is_joined():
+            print("✓ Join confirmed via status query.")
+            return True
+
+        if 'busy' in response.lower():
+            print("  Module busy — waiting longer before retry...")
+            time.sleep(10)
+        elif attempt < max_attempts:
+            backoff = base_wait + attempt * 5
+            print(f"  Join failed. Waiting {backoff}s before retry...")
+            time.sleep(backoff)
+
+    print("✗ All join attempts failed.")
+    return False
+
+def check_downlink(response):
+    if '+RECV' in response:
+        print("↓ Downlink signalled — fetching details...")
+        dl = send_at('AT+RECVB=?', wait=2)
+        for line in dl.splitlines():
+            if ':' in line:
+                
+                parts = line.strip().split(':')
+                fport   = parts[0] if len(parts) > 0 else '?'
+                payload = parts[1] if len(parts) > 1 else '(empty)'
+                print(f"↓ Downlink on FPort {fport}: {payload} ({int(len(payload)/2)} bytes)")
+    else:
+        print("  No downlink in this window")
+
+# Configure OTAA credentials
+send_at('AT+NJM=1')
+send_at('AT+APPEUI=0000000000000000')
+send_at('AT+APPKEY=5A70D1B2752B54A34BF635DC0F3B4042')
+
+# Enable ADR so the network can push us to the fastest data rate
+send_at('AT+ADR=1')
+
+# Set DR5 (SF7) as the starting data rate for shortest airtime
+send_at('AT+DR=5')
+
+# Join with retry logic
+print("Joining network...")
+if join_network(max_attempts=5, base_wait=5):
+    print("Sending data...")
+    # 00 = unconfirmed uplink (fire and forget, no ACK wait)
+    response = send_at('AT+SENDB=00,02,5,48656C6C6F', wait=3)
+    # Only check for a downlink if you need one — remove this line to tighten the loop further
+    check_downlink(response)
+else:
+    print("Aborting — could not join network.")
+
+
+
+
+
+
+port.close()

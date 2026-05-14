@@ -21,11 +21,8 @@ def on_message(ws, message):
         fcnt    = data.get('fcnt', '?')
         port    = data.get('port', '?')
         payload = data.get('data', data.get('encdata', '(no plaintext)'))
-        dr      = data.get('dr', '?')
-        rssi    = data.get('rssi', '?')
-        snr     = data.get('snr', '?')
 
-        print(f"[{eui}] fcnt={fcnt} port={port} payload={payload} | {dr} rssi={rssi} snr={snr}")
+        print(f"[{eui}] fcnt={fcnt} port={port} payload={payload}")
 
         # Decode hex payload to string if possible
         try:
