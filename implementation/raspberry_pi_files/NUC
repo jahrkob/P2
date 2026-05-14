@@ -1,7 +1,7 @@
 import serial
 import time
 
-port = serial.Serial('/dev/ttyUSB0', 9600, timeout=3)
+port = serial.Serial('/dev/ttyUSB0', 9600, timeout=3) #'/dev/ttyUSB0' is the typical port for a USB-to-serial adapter on Linux (Don't know if there is a universal solution)
 
 def send_at(cmd, wait=1):
     port.write((cmd + '\r\n').encode())
