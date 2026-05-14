@@ -36,6 +36,8 @@ class NetworkMonitorer:
         self.auth_token = auth_token
         self.amr_list: list[AMR] = []
         self.load_amr_database()
+        self.map_amr_ip:str = '192.168.100.51' # which AMR to request MAP GUID from
+        self.current_map_guid:str = "7ecbf116-0d8e-11f1-b640-000129922d00"
 
     def __str__(self):
         amr_info = "\n".join([str(amr) for amr in self.amr_list])
@@ -271,13 +273,20 @@ class NetworkMonitorer:
     def get_map(self, testing=False):
         if not testing:
             for amr in self.amr_list:
-                try:
-                    map_data = amr.get_working_map()
-                    if isinstance(map_data, dict):
-                        return map_data["base_map"]
-                    print(map_data)
-                except Exception as e:
-                    print(e)
+                if amr.ip == self.map_amr_ip:
+                    try:
+                        map_data = amr.get_working_map(self.current_map_guid)
+                        if isinstance(map_data, dict):
+                            return {
+                                'map': map_data["base_map"],
+                                'origin': (map_data['origin_x'],map_data['origin_y']),
+                                'resolution': map_data['resolution']
+                            }
+                        print(map_data)
+                    except Exception as e:
+                        print(e)
+                else:
+                    print("WARNING: AMR assigned to find map could not be found in amr_list")
             print("WARNING: No map could be loaded from any AMR in the database.")
             return
         else:

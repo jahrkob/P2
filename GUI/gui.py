@@ -316,6 +316,9 @@ class GUI(ctk.CTk):
         if data_signature != self.last_data_signature:
             data = self.get_data()
 
+            for amr_json in data['amrs']:
+                self.frames['map'].update_position(amr_json['ip'],amr_json, name=amr_json['name'])
+
             self.show_graph(data)
 
             self.frames["errors"].load_errors()
