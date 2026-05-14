@@ -182,6 +182,7 @@ class NetworkMonitorer:
         quality = None
         noise = None
         rssi = None
+        status = None
         battery = None
         pos_x = None
         pos_y = None
@@ -207,6 +208,13 @@ class NetworkMonitorer:
         except Exception as e:
             self.save_amr_error(amr.ip, "RASPI_METRICS_ERROR", str(e))
 
+        if status:
+            battery=status['battery_percentage'], # måske skift til at bruge get, hvis der opstår fejl (burde dog ikke være nødvendigt)
+            pos_x=status['position']['x'],
+            pos_y=status['position']['y']
+        else:
+            self.save_amr_error(amr.ip, "GET_STATUS_ERROR", f"{amr}.get_status() failed")
+
         self.save_amr_data(
             amr_ip=amr.ip,
             rtt=rtt,
@@ -214,20 +222,20 @@ class NetworkMonitorer:
             packet_loss=packet_loss,
             quality=quality,
             noise=noise,
-            rssi=None,
-            battery=status['battery_percentage'],
-            pos_x=status['position']['x'],
-            pos_y=status['position']['x']
+            rssi=rssi,
+            battery=battery,
+            pos_x=pos_x,
+            pos_y=pos_y
         )
 
         print(
             f"{amr.name} ({amr.ip}) | "
-            f"Pos: ({status['position']['x']}, {status['position']['y']}) | "
+            f"Pos: ({pos_x}, {pos_y}) | "
             f"RTT: {rtt} ms | "
             f"Jitter: {jitter} ms | "
             f"Packet loss: {packet_loss}% | "
             f"RSSI: {rssi} | "
-            f"Battery: {status['battery_percentage']}"
+            f"Battery: {battery}"
         )
 
     def active_monitoring(self, interval_seconds=5, cycles=None, reload_from_database=True):
