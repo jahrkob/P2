@@ -33,11 +33,11 @@ def join_network(max_attempts=5, base_wait=10):
             return True
 
         if 'busy' in response.lower():
-            print("  Module busy — waiting longer before retry...")
+            print("  Module busy — waiting longer before retry.")
             time.sleep(10)
         elif attempt < max_attempts:
             backoff = base_wait + attempt * 5
-            print(f"  Join failed. Waiting {backoff}s before retry")
+            print(f"  Join failed. Waiting {backoff}s before retry.")
             time.sleep(backoff)
 
     print("✗ All join attempts failed.")
@@ -45,7 +45,7 @@ def join_network(max_attempts=5, base_wait=10):
 
 def check_downlink(response):
     if '+RECV' in response:
-        print("Downlink signalled — fetching details")
+        print("Downlink signalled — fetching details.")
         dl = send_at('AT+RECVB=?', wait=2)
         for line in dl.splitlines():
             if ':' in line:
