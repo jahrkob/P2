@@ -12,7 +12,6 @@ class OverviewPage(ctk.CTkFrame):
 
         header = ctk.CTkFrame(self.container, fg_color="transparent")
         header.pack(fill="x", padx=10, pady=(10, 4))
-
         ctk.CTkLabel(header, text="AMR Overview", font=("Arial", 26, "bold")).pack(anchor="w")
 
         self.scroll_area = ctk.CTkScrollableFrame(self.container, fg_color="transparent")
@@ -111,6 +110,7 @@ class OverviewPage(ctk.CTkFrame):
         for widget in self.card_widgets:
             widget.destroy()
         self.card_widgets = []
+
 
     def _open_graph(self, amr_ip):
         if self.on_graph_request is not None:

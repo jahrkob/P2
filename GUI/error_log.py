@@ -9,6 +9,23 @@ class ErrorLogPage(ctk.CTkFrame):
         super().__init__(parent)
 
         ctk.CTkLabel(self, text="Error Log", font=("Arial", 20)).pack(pady=10)
+        self.all_errors = []
+        self.selected_filter = "All"
+
+        filter_frame = ctk.CTkFrame(self, fg_color="transparent")
+        filter_frame.pack(fill="x", padx=10, pady=(0, 10))
+
+        ctk.CTkLabel(filter_frame, text="Filter by IP:", font=("Arial", 12)).pack(side="left", padx=(0, 8))
+
+        self.filter_combo = ctk.CTkComboBox(
+            filter_frame,
+            values=["All"],
+            state="readonly",
+            width=180,
+            command=self._on_filter_change
+        )
+        self.filter_combo.set("All")
+        self.filter_combo.pack(side="left")
 
         self.textbox = ctk.CTkTextbox(self, width=800, height=500, font=("Consolas", 12))
         self.textbox.pack(padx=10, pady=10, fill="both", expand=True)
@@ -23,6 +40,38 @@ class ErrorLogPage(ctk.CTkFrame):
 
     # =========================
     # DATABASE ACCESS
+    def _on_filter_change(self, choice):
+        """Handle filter selection change"""
+        self.selected_filter = choice
+        self._render_filtered_errors()
+
+    def _render_filtered_errors(self):
+        """Re-render errors based on current filter"""
+        if self.selected_filter == "All":
+            filtered_errors = self.all_errors
+        else:
+            filtered_errors = [err for err in self.all_errors if str(err["amr_ip"]) == self.selected_filter]
+
+        scroll_pos = self.textbox.yview()
+        at_bottom = scroll_pos[1] == 1.0
+
+        self.textbox.delete("1.0", "end")
+
+        if not filtered_errors:
+            self.textbox.insert("end", "No error entries available.\n")
+            if at_bottom:
+                self.textbox.yview_moveto(1.0)
+            else:
+                self.textbox.yview_moveto(scroll_pos[0])
+            return
+
+        for row in filtered_errors:
+            ts = self.format_timestamp(row["timestamp"])
+            ip = str(row["amr_ip"])
+            ip_field = self.ip_field_with_padding(ip)
+            line = f"[{ts}] {ip_field} | {row['error']} -> {row['error_desc']}\n"
+            self.textbox.insert("end", line)
+
     # =========================
     def get_errors_from_db(self):
         # Use the same implementation database as the graph and overview pages.
@@ -65,50 +114,27 @@ class ErrorLogPage(ctk.CTkFrame):
         except Exception:
             errors = []
 
+        self.all_errors = errors
+
+        # Build filter options: "All" + all unique IPs
+        ips = ["All"] + sorted(list(set(str(err["amr_ip"]) for err in self.all_errors)))
+        self.filter_combo.configure(values=ips)
+
+        # Reset filter to "All" if current selection no longer exists
+        if self.selected_filter not in ips:
+            self.selected_filter = "All"
+            self.filter_combo.set("All")
+
         # Use maximum possible IPv4 length so '|' stays in same column
         self.ip_column_width = len("AMR ") + len("255.255.255.255")
 
-        scroll_pos = self.textbox.yview()
-        at_bottom = scroll_pos[1] == 1.0
-
-        if len(errors) != self.last_count:
-            # Only rewrite the text box when the row count changes.
-            # That keeps the scroll position and avoids unnecessary flicker.
-            self.textbox.delete("1.0", "end")
-
-            if not errors:
-                self.textbox.insert("end", "No error entries available.\n")
-                self.last_count = 0
-                if at_bottom:
-                    self.textbox.yview_moveto(1.0)
-                else:
-                    self.textbox.yview_moveto(scroll_pos[0])
-                return
-
-            for row in errors:
-                ts = self.format_timestamp(row["timestamp"])
-                ip = str(row["amr_ip"])
-
-                # align IP column using fixed maximum IPv4 width
-                ip_field = self.ip_field_with_padding(ip)
-                line = f"[{ts}] {ip_field} | {row['error']} -> {row['error_desc']}\n"
-                self.textbox.insert("end", line)
-
-            self.last_count = len(errors)
-
-        # Restore scroll position
-        if at_bottom:
-            self.textbox.yview_moveto(1.0)
-        else:
-            self.textbox.yview_moveto(scroll_pos[0])
+        self.last_count = len(errors)
+        self._render_filtered_errors()
 
     # =========================
     # ADD NEW ERROR (LIVE)
     # =========================
     def add_error(self, error):
-        scroll_pos = self.textbox.yview()
-        at_bottom = scroll_pos[1] == 1.0
-
         ip = str(error["amr"])
         ts = self.format_timestamp(error["time"]) if hasattr(self, "format_timestamp") else str(error["time"])
 
@@ -117,5 +143,6 @@ class ErrorLogPage(ctk.CTkFrame):
         line = f"[{ts}] {ip_field} | {error['level']}\n"
         self.textbox.insert("end", line)
 
-        if at_bottom:
+        scroll_pos = self.textbox.yview()
+        if scroll_pos[1] == 1.0:
             self.textbox.yview_moveto(1.0)
