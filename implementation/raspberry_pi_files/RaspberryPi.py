@@ -34,7 +34,7 @@ class RaspberryPi(InternetDevice):
         Returns:
             json: A json containing:
                 rssi (float)
-                signal_strength (float)
+                quality (float)
                 noise (Optional[float]): Noise level, null if unavailable.
         """
         url = f'http://{self.ip}:{self.port}/api/status'
