@@ -106,6 +106,8 @@ class MapPage(ctk.CTkFrame):
     
     def __reload_map(self):
         map_data = self.network_monitorer.get_map()
+        if not map_data:
+            return
         self.__origin = map_data['origin']
         self.__resolution = map_data['resolution']
         self.set_image(map_data['map'])
