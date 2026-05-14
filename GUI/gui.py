@@ -71,8 +71,9 @@ class GUI(ctk.CTk):
 
         self.frames["overview"] = OverviewPage(self.container, on_graph_request=self.open_graph_for_amr)
         self.frames["errors"] = ErrorLogPage(self.container)
-        self.frames["map"] = MapPage(self.container, self.network_monitorer, start_map, testing=True)
+        self.frames["map"] = MapPage(self.container, self.network_monitorer, start_map)
         self.frames["graph"] = GraphPage(self.container)
+        self.frames["settings"] = SettingsPage(self.container, self.network_monitorer)
 
         for frame in self.frames.values():
             frame.grid(row=0, column=0, sticky="nsew")
@@ -102,6 +103,12 @@ class GUI(ctk.CTk):
             self.sidebar,
             text="Map",
             command=partial(self.show_frame, "map")
+        ).pack(pady=5, padx=10, fill="x")
+
+        ctk.CTkButton(
+            self.sidebar,
+            text="Settings",
+            command=partial(self.show_frame, "settings")
         ).pack(pady=5, padx=10, fill="x")
 
     # =========================
