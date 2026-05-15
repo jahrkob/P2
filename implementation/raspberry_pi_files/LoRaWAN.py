@@ -350,14 +350,15 @@ def main():
     # --- Build payload from Wi-Fi info (or fall back to example values) ------
     print('Sending data...')
     try:
-        info    = WirelessInfo.get('wlan0')
-        rssi    = int(info['rssi'])    if info else -72
-        noise   = int(info['noise'])   if (info and info['noise'] is not None) else -95
-        quality = int(info['quality']) if info else 68
+        info = WirelessInfo.get('wlan0')
+        
+        rssi    = int(info['rssi'])
+        noise   = int(info['noise']) if info['noise'] is not None else 0 #-256 but wont fit in struct therefore 0 = none
+        quality = int(info['quality'])
+        
     except MissingSystemFiles as exc:
-        print(f'Warning: {exc}')
-        rssi, noise, quality = -72, -95, 68
-
+        return(f'Warning: {exc}')
+    print(rssi,noise,quality)
     # Pack as: rssi (signed byte), noise (signed byte), quality (unsigned byte)
     payload = struct.pack('bbB', rssi, noise, quality)
     lora.send_bytes(payload, fport=2)
