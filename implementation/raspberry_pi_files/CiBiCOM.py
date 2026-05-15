@@ -1,35 +1,14 @@
 import websocket
 import json
-import os
 from datetime import datetime
 
 
 class TeracomLoRaWANClient:
-    def __init__(self, token: str, host: str = "iotnet.teracom.dk", output_file: str = "received_data.json"):
+    def __init__(self, token: str, host: str = "iotnet.teracom.dk"):
         self.token = token
         self.server = f"wss://{host}/app?token={token}"
-        self.output_file = output_file
         self.ws = None
-        self._init_output_file()
-
-    def _init_output_file(self):
-        """Create or clear the output JSON file with an empty list."""
-        if not os.path.exists(self.output_file):
-            with open(self.output_file, "w") as f:
-                json.dump([], f)
-
-    def _append_to_file(self, entry: dict):
-        """Append a new data entry to the JSON file."""
-        try:
-            with open(self.output_file, "r") as f:
-                records = json.load(f)
-        except (json.JSONDecodeError, FileNotFoundError):
-            records = []
-
-        records.append(entry)
-
-        with open(self.output_file, "w") as f:
-            json.dump(records, f, indent=2)
+        self.records: dict = {}  # Keyed by EUI, value is list of entries
 
     def connect(self):
         self.ws = websocket.WebSocketApp(
@@ -40,6 +19,10 @@ class TeracomLoRaWANClient:
             on_close=self._on_close,
         )
         self.ws.run_forever()
+
+    def get_records(self) -> dict:
+        """Return all received records."""
+        return self.records
 
     def _on_open(self, ws):
         print("Connected to Cibicom/Teracom LoRaWAN server")
@@ -52,7 +35,6 @@ class TeracomLoRaWANClient:
             return
 
         cmd = data.get("cmd")
-
         if cmd == "rx":
             self._handle_rx(data)
         elif cmd == "gw":
@@ -67,7 +49,7 @@ class TeracomLoRaWANClient:
         payload = data.get("data", data.get("encdata", "(no plaintext)"))
 
         print(f"[{eui}] fcnt={fcnt} port={port} payload={payload}")
-    
+
         entry = {
             "timestamp": datetime.utcnow().isoformat() + "Z",
             "EUI":       eui,
@@ -75,8 +57,12 @@ class TeracomLoRaWANClient:
             "port":      port,
             "payload":   payload,
         }
-        self._append_to_file(entry)
-        print(f"  └ saved to {self.output_file}")
+
+        if eui not in self.records:
+            self.records[eui] = []
+        self.records[eui].append(entry)
+
+        print(f"  └ stored in memory (EUI={eui}, total={len(self.records[eui])})")
 
     def _on_error(self, ws, error):
         print(f"WebSocket error: {error}")
@@ -87,5 +73,8 @@ class TeracomLoRaWANClient:
 
 if __name__ == "__main__":
     TOKEN = "vnoWpgAAABFpb3RuZXQudGVyYWNvbS5kaySaIG0eQDgMgCTxhShW93s="
-    client = TeracomLoRaWANClient(token=TOKEN, output_file="received_data.json")
+    client = TeracomLoRaWANClient(token=TOKEN)
     client.connect()
+
+    # Access the collected data after connection closes
+    print(client.get_records())
