@@ -37,7 +37,7 @@ class ATInterface:
         Args:
             port:    Serial device path.  '/dev/ttyUSB0' is typical on Linux
                      for a USB-to-serial adapter; adjust for your OS.
-            baud:    Most Dragino / RAK / Seeed LoRa modules default to 115200.
+            baud:    9600 for the Dragino LA66.
             timeout: Read timeout in seconds.
         """
         self.port = serial.Serial(port, baud, timeout=timeout)
@@ -52,6 +52,17 @@ class ATInterface:
         response = self.port.read_all().decode(errors='ignore')
         print(f">> {cmd}\n<< {response.strip()}\n")
         return response
+
+    def drain(self, seconds: float = 1.0) -> str:
+        """
+        Read whatever is sitting in the serial buffer without sending anything.
+        Useful for catching unsolicited lines (e.g. late +RECV notifications).
+        """
+        time.sleep(seconds)
+        data = self.port.read_all().decode(errors='ignore')
+        if data.strip():
+            print(f"<< (unsolicited) {data.strip()}\n")
+        return data
 
     def ping(self) -> bool:
         """Send a bare AT and return True if the module replies with OK."""
@@ -127,7 +138,7 @@ class LoRaWAN:
         at: ATInterface,
         app_eui: str,
         app_key: str,
-        adr: bool  = True,
+        adr: bool    = True,
         join_dr: int = 0,   # DR0 = SF12, best range for initial join
     ):
         """
@@ -152,18 +163,22 @@ class LoRaWAN:
         """
         Push all credentials and radio parameters to the module.
         Call this once before attempting to join.
+
+        Note: AT+BAND is intentionally omitted — the LA66 EU868 firmware
+        has the band hardcoded and returns AT_ERROR if you try to set it.
+
+        ADR is disabled before setting DR so the DR value actually takes
+        effect (the module ignores AT+DR while ADR is active).
+        ADR is re-enabled after a successful join inside join().
         """
-        at.reset()                                 # clear any stale session
-        time.sleep(6)                              # wait for module to fully boot after reset
-        at.send('AT+NJM=1')                        # OTAA mode
-        # Note: AT+BAND is intentionally omitted — the LA66 EU868 firmware
-        # has the band hardcoded and returns AT_ERROR if you try to set it.
+        at = self.at
+        at.reset()
+        time.sleep(8)                     # wait for module to fully boot after reset
+        at.send('AT+NJM=1')              # OTAA mode
         at.send(f'AT+APPEUI={self.app_eui}')
         at.send(f'AT+APPKEY={self.app_key}')
-        # ADR must be disabled before setting DR, otherwise AT+DR is ignored.
-        # ADR is re-enabled after a successful join inside join().
         at.send('AT+ADR=5')
-        at.send(f'AT+DR={self.join_dr}')           # DR0 = SF12, best range for joining
+        at.send(f'AT+DR={self.join_dr}') # DR0 = SF12 for best join range
 
     # ------------------------------------------------------------------
     # Join
@@ -173,7 +188,7 @@ class LoRaWAN:
         """
         Query the module's actual join status.
         Returns True only when AT+NJS=? replies with a line that is exactly '1'.
-        
+
         Bug fix: previously used `'1' in response` which matched the '1' in
         "OK" or other incidental characters, causing false positives.
         """
@@ -184,28 +199,34 @@ class LoRaWAN:
         """
         Attempt OTAA join with retries and linear backoff.
 
+        The LA66 persists its last session to flash and may rejoin automatically
+        on boot (visible as "JOINED-xx" in the ATZ or AT+NJM response). This
+        method checks for that first and skips the AT+JOIN loop if already joined.
+
         Args:
             max_attempts: Maximum number of AT+JOIN attempts.
             base_wait:    Seconds to wait for each join response.
-                          Should be at least 10–15 s to cover both RX windows.
+                          Should be at least 10-15 s to cover both RX windows.
 
         Returns:
             True if joined, False if all attempts failed.
         """
+        # The module may have rejoined from a saved session during configure().
+        # No need to send AT+JOIN if we're already on the network.
+        if self.is_joined():
+            print('Already joined from saved session — skipping AT+JOIN.')
+            if self.adr:
+                self.at.send('AT+ADR=1')
+            return True
+
         for attempt in range(1, max_attempts + 1):
             print(f'Join attempt {attempt}/{max_attempts}.')
             response = self.at.send('AT+JOIN', wait=base_wait)
 
-            if 'Network joined' in response or 'JOINED' in response.upper():
-                print('Join confirmed in response.')
-                if self.adr:
-                    self.at.send('AT+ADR=1')       # re-enable ADR now that we're joined
-                return True
-
             if self.is_joined():
                 print('Join confirmed via status query.')
                 if self.adr:
-                    self.at.send('AT+ADR=1')       # re-enable ADR now that we're joined
+                    self.at.send('AT+ADR=1')   # re-enable ADR now that we're joined
                 return True
 
             if 'busy' in response.lower():
@@ -226,27 +247,45 @@ class LoRaWAN:
     def send_bytes(
         self,
         payload: bytes,
-        fport: int  = 2,
-        confirmed: bool = False,
-        wait: float = 3.0,
+        fport: int          = 2,
+        confirmed: bool     = False,
+        wait: float         = 6.0,
+        rx_poll_secs: float = 5.0,
     ) -> str:
         """
-        Send a raw bytes payload as a hex uplink.
+        Send a raw bytes payload as a hex uplink, then poll for a downlink.
 
         Args:
-            payload:   Raw bytes to transmit.
-            fport:     LoRaWAN FPort (1-223).
-            confirmed: If True, request a network ACK (AT+SENDB=01,...).
-            wait:      Seconds to wait for TX/RX windows to complete.
+            payload:      Raw bytes to transmit.
+            fport:        LoRaWAN FPort (1-223).
+            confirmed:    If True, request a network ACK (AT+SENDB=01,...).
+            wait:         Seconds to wait after AT+SENDB for RX1/RX2 windows.
+                          6 s covers the RX2 window (opens at ~2 s) plus margin.
+            rx_poll_secs: Extra seconds to keep draining the serial buffer for a
+                          late +RECV notification. The LA66 sometimes emits +RECV
+                          as an unsolicited line after the initial response.
 
         Returns:
-            The full AT response string.
+            The full response string (initial send + any late unsolicited data).
         """
-        hex_payload = payload.hex().upper()
-        nbytes      = len(payload)
+        hex_payload  = payload.hex().upper()
+        nbytes       = len(payload)
         confirm_flag = '01' if confirmed else '00'
-        cmd = f'AT+SENDB={confirm_flag},{fport:02d},{nbytes},{hex_payload}'
+        cmd          = f'AT+SENDB={confirm_flag},{fport:02d},{nbytes},{hex_payload}'
+
+        # Send and wait long enough for both RX windows to close
         response = self.at.send(cmd, wait=wait)
+
+        # Poll for a late +RECV that arrives after the initial response.
+        # The LA66 sometimes emits +RECV as an unsolicited line seconds later.
+        if '+RECV' not in response:
+            deadline = time.time() + rx_poll_secs
+            while time.time() < deadline:
+                extra = self.at.drain(seconds=1.0)
+                response += extra
+                if '+RECV' in extra:
+                    break
+
         self._check_downlink(response)
         return response
 
@@ -267,13 +306,17 @@ class LoRaWAN:
         dl = self.at.send('AT+RECVB=?', wait=2)
 
         for line in dl.splitlines():
-            # Most modules return: <fport>,<len>,<hex_payload>
-            parts = line.strip().split(',')
-            if len(parts) >= 3:
+            # LA66 returns: <fport>:<hex_payload>  (e.g. "2:48656c6c6f")
+            parts = line.strip().split(':')
+            if len(parts) >= 2:
                 fport   = parts[0]
-                nbytes  = parts[1]
-                payload = parts[2]
-                print(f'↓ Downlink on FPort {fport}: {payload} ({nbytes} bytes)')
+                payload = parts[1]
+                nbytes  = len(payload) // 2
+                print(f'Downlink on FPort {fport}: {payload} ({nbytes} bytes)')
+
+
+
+
 
 
 # ---------------------------------------------------------------------------
@@ -284,16 +327,13 @@ def main():
     # --- Serial connection ---------------------------------------------------
     at = ATInterface(port='/dev/ttyUSB0', baud=9600)
 
-    if not at.ping():
-        print('Warning: No response to AT ping — continuing anyway.')
-
     # --- LoRaWAN setup -------------------------------------------------------
     # Replace APPEUI and APPKEY with the values registered on your network server.
     # Your DevEUI is burned into the module (shown on ATZ reset output).
     lora = LoRaWAN(
         at      = at,
-        app_eui = '0000000000000000',           # ← replace with real value
-        app_key = '5A70D1B2752B54A34BF635DC0F3B4042',  # ← replace with real value
+        app_eui = '0000000000000000',                  # <- replace with real value
+        app_key = '5A70D1B2752B54A34BF635DC0F3B4042',  # <- replace with real value
         adr     = True,
         join_dr = 0,    # SF12 for join; ADR will optimise after joining
     )
@@ -301,14 +341,14 @@ def main():
     lora.configure()
 
     # --- Join ----------------------------------------------------------------
-    print('Joining network…')
+    print('Joining network...')
     if not lora.join(max_attempts=5, base_wait=15):
         print('Aborting — could not join network.')
         at.close()
         return
 
     # --- Build payload from Wi-Fi info (or fall back to example values) ------
-    print('Sending data…')
+    print('Sending data...')
     try:
         info    = WirelessInfo.get('wlan0')
         rssi    = int(info['rssi'])    if info else -72

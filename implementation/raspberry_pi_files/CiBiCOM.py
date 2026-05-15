@@ -1,55 +1,91 @@
-import websocket  # pip install websocket-client
+import websocket
 import json
+import os
+from datetime import datetime
 
-TOKEN  = 'vnoWpgAAABFpb3RuZXQudGVyYWNvbS5kaySaIG0eQDgMgCTxhShW93s='
-SERVER = f'wss://iotnet.teracom.dk/app?token={TOKEN}'
 
-def on_open(ws):
-    print("Connected to Cibicom/Teracom LoRaWAN server")
+class TeracomLoRaWANClient:
+    def __init__(self, token: str, host: str = "iotnet.teracom.dk", output_file: str = "received_data.json"):
+        self.token = token
+        self.server = f"wss://{host}/app?token={token}"
+        self.output_file = output_file
+        self.ws = None
+        self._init_output_file()
 
-def on_message(ws, message):
-    try:
-        data = json.loads(message)
-    except json.JSONDecodeError:
-        print(f"Non-JSON message received: {message}")
-        return
+    def _init_output_file(self):
+        """Create or clear the output JSON file with an empty list."""
+        if not os.path.exists(self.output_file):
+            with open(self.output_file, "w") as f:
+                json.dump([], f)
 
-    cmd = data.get('cmd')
+    def _append_to_file(self, entry: dict):
+        """Append a new data entry to the JSON file."""
+        try:
+            with open(self.output_file, "r") as f:
+                records = json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError):
+            records = []
 
-    if cmd == 'rx':
-        eui     = data.get('EUI', '?')
-        fcnt    = data.get('fcnt', '?')
-        port    = data.get('port', '?')
-        payload = data.get('data', data.get('encdata', '(no plaintext)'))
+        records.append(entry)
+
+        with open(self.output_file, "w") as f:
+            json.dump(records, f, indent=2)
+
+    def connect(self):
+        self.ws = websocket.WebSocketApp(
+            self.server,
+            on_open=self._on_open,
+            on_message=self._on_message,
+            on_error=self._on_error,
+            on_close=self._on_close,
+        )
+        self.ws.run_forever()
+
+    def _on_open(self, ws):
+        print("Connected to Cibicom/Teracom LoRaWAN server")
+
+    def _on_message(self, ws, message):
+        try:
+            data = json.loads(message)
+        except json.JSONDecodeError:
+            print(f"Non-JSON message received: {message}")
+            return
+
+        cmd = data.get("cmd")
+
+        if cmd == "rx":
+            self._handle_rx(data)
+        elif cmd == "gw":
+            pass  # Gateway status update — ignore or log as needed
+        else:
+            print(f"Other message (cmd={cmd}): {data}")
+
+    def _handle_rx(self, data: dict):
+        eui     = data.get("EUI", "?")
+        fcnt    = data.get("fcnt", "?")
+        port    = data.get("port", "?")
+        payload = data.get("data", data.get("encdata", "(no plaintext)"))
 
         print(f"[{eui}] fcnt={fcnt} port={port} payload={payload}")
+    
+        entry = {
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "EUI":       eui,
+            "fcnt":      fcnt,
+            "port":      port,
+            "payload":   payload,
+        }
+        self._append_to_file(entry)
+        print(f"  └ saved to {self.output_file}")
 
-        # Decode hex payload to string if possible
-        try:
-            decoded = bytes.fromhex(payload).decode('utf-8')
-            print(f"  └ decoded: {decoded}")
-        except Exception:
-            pass  # payload may not be valid UTF-8
+    def _on_error(self, ws, error):
+        print(f"WebSocket error: {error}")
 
-    elif cmd == 'gw':
-        # Gateway status update — ignore or log as needed
-        pass
+    def _on_close(self, ws, close_status_code, close_msg):
+        print(f"Connection closed: {close_status_code} {close_msg}")
 
-    else:
-        print(f"Other message (cmd={cmd}): {data}")
 
-def on_error(ws, error):
-    print(f"WebSocket error: {error}")
-
-def on_close(ws, close_status_code, close_msg):
-    print(f"Connection closed: {close_status_code} {close_msg}")
-
-ws = websocket.WebSocketApp(
-    SERVER,
-    on_open=on_open,
-    on_message=on_message,
-    on_error=on_error,
-    on_close=on_close,
-)
-
-ws.run_forever()
+if __name__ == "__main__":
+    TOKEN = "vnoWpgAAABFpb3RuZXQudGVyYWNvbS5kaySaIG0eQDgMgCTxhShW93s="
+    client = TeracomLoRaWANClient(token=TOKEN, output_file="received_data.json")
+    client.connect()
