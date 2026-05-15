@@ -64,14 +64,12 @@ class GUI(ctk.CTk):
         auth_token = 'Basic ZGlzdHJpYnV0b3I6NjJmMmYwZjFlZmYxMGQzMTUyYzk1ZjZmMDU5NjU3NmU0ODJiYjhlNDQ4MDY0MzNmNGNmOTI5NzkyODM0YjAxNA==' # should be configurable in settings
         self.network_monitorer = NetworkMonitorer(fleet_manager_ip = self.fleetManager_ip, auth_token = auth_token)
 
-        start_map = self.network_monitorer.get_map()
-
         # ===== PAGES =====
         self.frames = {}
 
         self.frames["overview"] = OverviewPage(self.container, on_graph_request=self.open_graph_for_amr)
         self.frames["errors"] = ErrorLogPage(self.container)
-        self.frames["map"] = MapPage(self.container, self.network_monitorer, start_map)
+        self.frames["map"] = MapPage(self.container, self.network_monitorer)
         self.frames["graph"] = GraphPage(self.container)
         self.frames["settings"] = SettingsPage(self.container, self.network_monitorer)
 
@@ -213,7 +211,7 @@ class GUI(ctk.CTk):
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
 
-            amr_rows = cursor.execute("SELECT ip, name, raspi_ip FROM amr ORDER BY ip ASC LIMIT 20").fetchall()
+            amr_rows = cursor.execute("SELECT ip, name, dev_eui FROM amr ORDER BY ip ASC LIMIT 20").fetchall()
             latest_data_rows = cursor.execute("SELECT * FROM data ORDER BY timestamp DESC, id DESC").fetchall()
             latest_error_rows = cursor.execute("SELECT * FROM error ORDER BY timestamp DESC, id DESC").fetchall()
 
@@ -318,7 +316,7 @@ class GUI(ctk.CTk):
             data = self.get_data()
 
             for amr_json in data['amrs']:
-                self.frames['map'].update_position(amr_json['ip'],amr_json, name=amr_json['name'])
+                self.frames['map'].update_position(amr_json['ip'],amr_json['pos'], name=amr_json['name'])
 
             self.show_graph(data)
 

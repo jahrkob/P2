@@ -208,7 +208,7 @@ class AddAMRPopup(Popup):
             ErrorPopup(self._parent,'Operation Failed', 'AMR with given IP-address already exists')
             return
         
-        if self.network_monitorer.check_value_exists(TableNames.amr,'raspi_ip',dev_eui):
+        if self.network_monitorer.check_value_exists(TableNames.amr,'dev_eui',dev_eui):
             ErrorPopup(self._parent,'Operation Failed', 'Given Device EUI is already listed under another AMR')
             return
 
@@ -244,8 +244,8 @@ class RemoveAMRPopup(Popup):
             Popup(self._parent,'Invalid IP address given', height=100)
             return
     
-        if self.network_monitorer.check_value_exists(TableNames.amr,'ip',ip_adr):
-            ErrorPopup(self._parent,'Operation Failed', 'AMR with given IP-address already exists')
+        if not self.network_monitorer.check_value_exists(TableNames.amr,'ip',ip_adr):
+            ErrorPopup(self._parent,'Operation Failed', 'AMR with given IP-address does not exist')
             return
 
         self.network_monitorer.remove_amr_from_database(ip_adr)

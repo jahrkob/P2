@@ -36,8 +36,8 @@ class NetworkMonitorer:
         self.auth_token = auth_token
         self.amr_list: list[AMR] = []
         self.load_amr_database()
-        self.map_amr_ip:str = '192.168.100.51' # which AMR to request MAP GUID from
-        self.current_map_guid:str = "7ecbf116-0d8e-11f1-b640-000129922d00"
+        self.map_amr_ip:str = '192.168.100.51' # which AMR to request MAP GUID from (cannot be changed for now)
+        self.current_map_guid:str = "7ecbf116-0d8e-11f1-b640-000129922d00" # (cannot be changed for now)
 
     def __str__(self):
         amr_info = "\n".join([str(amr) for amr in self.amr_list])
@@ -53,17 +53,17 @@ class NetworkMonitorer:
             db_amr_list = db.session.query(db_spec.AMR).all()
         
         for amr_spec in db_amr_list:
-            self.amr_list.append(AMR(amr_spec.ip,amr_spec.name,amr_spec.raspi_ip,self.auth_token))
+            self.amr_list.append(AMR(amr_spec.ip,amr_spec.name,amr_spec.dev_eui,self.auth_token))
         
         return db_amr_list
 
-    def add_amr_to_database(self, ip, name, raspi_ip):
+    def add_amr_to_database(self, ip, name, dev_eui):
         try:
             with app.app_context():
                 # print("DB URL:", db.engine.url) # for testing
-                db.session.add(db_spec.AMR(ip=ip,name=name,raspi_ip=raspi_ip))
+                db.session.add(db_spec.AMR(ip=ip,name=name,dev_eui=dev_eui))
                 db.session.commit()
-                self.amr_list.append(AMR(ip, name, raspi_ip, self.auth_token))
+                self.amr_list.append(AMR(ip, name, dev_eui, self.auth_token))
                 return True
         
         except sqlalchemy.exc.IntegrityError as e:
@@ -217,7 +217,7 @@ class NetworkMonitorer:
             self.save_amr_error(amr.ip, "PING_ERROR", str(e))
 
         try:
-            quality, noise, rssi = RaspberryPi.get_signal_metrics()
+            metrics = RaspberryPi.get_signal_metrics()
         except Exception as e:
             self.save_amr_error(amr.ip, "RASPI_METRICS_ERROR", str(e))
 
@@ -270,7 +270,7 @@ class NetworkMonitorer:
 
             time.sleep(interval_seconds)
     
-    def get_map(self, testing=False):
+    def get_map(self, testing=True):
         if not testing:
             for amr in self.amr_list:
                 if amr.ip == self.map_amr_ip:
@@ -285,8 +285,8 @@ class NetworkMonitorer:
                         print(map_data)
                     except Exception as e:
                         print(e)
-                else:
-                    print("WARNING: AMR assigned to find map could not be found in amr_list")
+            else: # gets run if no amr passed amr.ip == self.map_amr_ip
+                print("WARNING: AMR assigned to find map could not be found in amr_list")
             print("WARNING: No map could be loaded from any AMR in the database.")
             return
         else:
@@ -297,7 +297,9 @@ class NetworkMonitorer:
                 mock_response.json.return_value = response_dict
                 mock_get.return_value = mock_response
 
-                return self.get_map(testing=False) #runs this function but with mock now
+                return_value = self.get_map(testing=False)
+
+                return return_value #runs this function but with mock now
 
 # til test
 # if __name__ == "__main__":
@@ -311,7 +313,7 @@ class NetworkMonitorer:
 #     # monitor.add_amr_to_database(
 #     #     ip="192.168.1.51",
 #     #     name="AMR #1",
-#     #     raspi_ip="192.168.1.101"
+#     #     dev_eui="192.168.1.101"
 #     # )
 
 #     print(monitor)

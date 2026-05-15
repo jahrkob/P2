@@ -43,7 +43,7 @@ if __name__ == '__main__':
         db.create_all() # create new tables in database.db
 
         for i in range(2,255):
-            new_amr = AMR(ip=f'192.168.1.{i}',name=f'AMR #{i}',raspi_ip=f'192.168.2.{i}')
+            new_amr = AMR(ip=f'192.168.100.{i}',name=f'AMR #{i}',dev_eui=f'192.168.2.{i}')
             AMR_list.append(new_amr)
             db.session.add(new_amr)
         db.session.commit()
@@ -70,8 +70,8 @@ if __name__ == '__main__':
                 quality=random.random()*(-72),
                 noise=random.random()*(-80),
                 battery=(1000-i)/1000,
-                pos_x=0.2*i,
-                pos_y=-0.04*i,
+                pos_x=1.002**i,
+                pos_y=-0.000004*i,
                 timestamp=datetime.now()+timedelta(seconds=i)
             )
             db.session.add(new_data)

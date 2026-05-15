@@ -16,10 +16,10 @@ from http import HTTPStatus
 class AMR(InternetDevice):
     """Autonomous Mobile Robot."""
 
-    def __init__(self, ip, name, raspi_ip, auth_token):
+    def __init__(self, ip, name, dev_eui, auth_token):
         super().__init__(ip)
         self.name = name
-        self.raspi_ip = raspi_ip
+        self.dev_eui = dev_eui
         self.auth_token = auth_token
         self.base_url = f"http://{ip}/api/v2.0.0"
         self.headers = {

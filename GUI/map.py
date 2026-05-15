@@ -23,7 +23,7 @@ from http import HTTPStatus
 
 
 class MapPage(ctk.CTkFrame):
-    def __init__(self, master, network_monitorer: NetworkMonitorer, base64_image=None, testing=False, width = 200, height = 200, corner_radius = None, border_width = None, bg_color = "transparent", fg_color = None, border_color = None, background_corner_colors = None, overwrite_preferred_drawing_method = None, **kwargs):
+    def __init__(self, master, network_monitorer: NetworkMonitorer, testing=False, width = 200, height = 200, corner_radius = None, border_width = None, bg_color = "transparent", fg_color = None, border_color = None, background_corner_colors = None, overwrite_preferred_drawing_method = None, **kwargs):
         super().__init__(master, width, height, corner_radius, border_width, bg_color, fg_color, border_color, background_corner_colors, overwrite_preferred_drawing_method, **kwargs)
         self.amr_positions: dict[str, tuple[float,float,float,float,float]] = {} # ip: (x, y, origin_x, origin_y, resolution)
         self.network_monitorer = network_monitorer
@@ -43,10 +43,9 @@ class MapPage(ctk.CTkFrame):
                 mock_response.json.return_value = response_dict
                 mock_set_image.return_value = mock_response
 
-                self.set_image(base64_image)
+                self.__load_map()
         else:
-            self.set_image(base64_image)
-
+            self.__load_map()
         self.canvas.bind("<ButtonPress-1>", self.start_pan)
         self.canvas.bind("<B1-Motion>", self.pan)
         # self.canvas.bind("<MouseWheel>", self.zoom)
@@ -100,13 +99,15 @@ class MapPage(ctk.CTkFrame):
         self.__reload_map_button = ctk.CTkButton(
             self.canvas,
             text='Reload',
-            command=self.__reload_map
+            command=self.__load_map
         )
         self.__reload_map_button.pack(pady=20,padx=20)
-    
-    def __reload_map(self):
+
+    def __load_map(self):
         map_data = self.network_monitorer.get_map()
         if not map_data:
+            print('WARNING: no map to load')
+            self.set_image(None)
             return
         self.__origin = map_data['origin']
         self.__resolution = map_data['resolution']
@@ -166,6 +167,10 @@ class MapPage(ctk.CTkFrame):
                 return
 
             x1, y1, x2, y2 = self.canvas.bbox(self.__image_id)
+
+            if not pos:
+                print('WARNING: self.update_position given no position')
+                return
 
             pixel_x = (pos[0] - self.__origin[0])/self.__resolution
             pixel_y = (y2-y1) - (pos[1] - self.__origin[1])/self.__resolution
