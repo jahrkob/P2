@@ -120,54 +120,8 @@ class GUI(ctk.CTk):
         if name == "graph":
             self.frames["graph"].draw_graph(amr_ip, metrics=metrics)
 
-    def open_graph_for_amr(self, amr_ip):
-        self._show_graph_selector(amr_ip)
-
-    def _show_graph_selector(self, amr_ip):
-        selector = ctk.CTkToplevel(self)
-        selector.title("Choose graph view")
-        selector.geometry("360x260")
-        selector.transient(self)
-        selector.grab_set()
-
-        ctk.CTkLabel(
-            selector,
-            text="What should the graph show?",
-            font=("Arial", 18, "bold"),
-        ).pack(pady=(20, 12), padx=20)
-
-        button_frame = ctk.CTkFrame(selector, fg_color="transparent")
-        button_frame.pack(fill="both", expand=True, padx=20, pady=10)
-
-        def choose(metrics):
-            selector.destroy()
-            self.show_frame("graph", amr_ip, metrics=metrics)
-
-        ctk.CTkButton(
-            button_frame,
-            text="Packet loss",
-            command=lambda: choose(["packet_loss"]),
-        ).pack(fill="x", pady=6)
-
-        ctk.CTkButton(
-            button_frame,
-            text="Jitter",
-            command=lambda: choose(["jitter"]),
-        ).pack(fill="x", pady=6)
-
-        ctk.CTkButton(
-            button_frame,
-            text="RTT",
-            command=lambda: choose(["ping"]),
-        ).pack(fill="x", pady=6)
-
-        ctk.CTkButton(
-            button_frame,
-            text="All three",
-            fg_color="#2d6cdf",
-            hover_color="#2458b7",
-            command=lambda: choose(["packet_loss", "jitter", "ping"]),
-        ).pack(fill="x", pady=(6, 0))
+    def open_graph_for_amr(self, amr_ip, metrics=None):
+        self.show_frame("graph", amr_ip, metrics=metrics)
 
     def _calculate_network_health(self, ping, jitter, packet_loss):
         ping_value = None if ping is None else float(ping)
