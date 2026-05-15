@@ -22,7 +22,7 @@ nm.load_amr_database()
 amr_mir3 = AMR(
     ip="192.168.100.51", 
     name="MiR 3", 
-    raspi_ip="192.168.x.x",
+    dev_eui="192.168.x.x",
     auth_token="ZGlzdHJpYnV0b3I6NjJmMmYwZjFlZmYxMGQzMTUyYzk1ZjZmMDU5NjU3NmU0ODJiYjhlNDQ4MDY0MzNmNGNmOTI5NzkyODM0YjAxNA=="
 )
 

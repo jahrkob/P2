@@ -62,7 +62,7 @@ class NetworkMonitorer:
         
         for amr_spec in db_amr_list:
             with self.amr_list_lock:
-                self.amr_list.append(AMR(amr_spec.ip, amr_spec.name, amr_spec.raspi_ip, self.auth_token))
+                self.amr_list.append(AMR(amr_spec.ip, amr_spec.name, amr_spec.dev_eui, self.auth_token))
         
         return db_amr_list
 
@@ -76,7 +76,7 @@ class NetworkMonitorer:
                 return True
         
                 with self.amr_list_lock:
-                    self.amr_list.append(AMR(ip, name, raspi_ip, self.auth_token))
+                    self.amr_list.append(AMR(ip, name, dev_eui, self.auth_token))
 
         except sqlalchemy.exc.IntegrityError as e:
             with app.app_context():
@@ -242,7 +242,7 @@ class NetworkMonitorer:
             self.save_amr_error(amr.ip, "PING_ERROR", str(e))
 
         try: # denne funktionalitet er til når LoraWAN er implementeret
-            # metrics = LoraWAN(f"{amr.name}'s rasp", amr.raspi_ip, 5000).get_signal_metrics()
+            # metrics = LoraWAN(f"{amr.name}'s rasp", amr.dev_eui, 5000).get_signal_metrics()
             # quality, noise, rssi = metrics['quality'], metrics['noise'], metrics['rssi']
             pass
         except Exception as e:

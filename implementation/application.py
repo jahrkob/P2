@@ -48,20 +48,20 @@ if __name__ == "__main__":
     amr_mir3 = AMR(
         ip="192.168.100.51", 
         name="MiR 3", 
-        raspi_ip="192.168.x.x",
+        dev_eui="192.168.x.x",
         auth_token=monitor.auth_token
     )
 
     monitor.add_amr_to_database(
         ip=amr_mir3.ip,
         name=amr_mir3.name,
-        raspi_ip=amr_mir3.raspi_ip
+        dev_eui=amr_mir3.dev_eui
     )
 
     monitor.add_amr_to_database(
         ip="192.168.100.52",
         name="MiR 4",
-        raspi_ip="192.168.x.y"
+        dev_eui="192.168.x.y"
     )
 
     #monitor.save_amr_data()
