@@ -180,7 +180,7 @@ class MapPage(ctk.CTkFrame):
                 print(f'WARNING: self.update_position given invalid amount of coordinates: {len(pos)}')
                 return
             
-            if type(pos[0]) == None or type(pos[0]) == None:
+            if pos[0] is None or pos[0] is None:
                 print(f'WARNING: self.update_position missing coordinates. pos = {pos}')
                 return
 
