@@ -224,3 +224,4 @@ __marimo__/
 !.vscode/launch.json
 !.vscode/extensions.json
 !.vscode/*.code-snippets
+*.pyc
