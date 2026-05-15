@@ -175,6 +175,14 @@ class MapPage(ctk.CTkFrame):
             if not pos:
                 print('WARNING: self.update_position given no position')
                 return
+            
+            if not len(pos) == 2:
+                print(f'WARNING: self.update_position given invalid amount of coordinates: {len(pos)}')
+                return
+            
+            if type(pos[0]) == None or type(pos[0]) == None:
+                print(f'WARNING: self.update_position missing coordinates. pos = {pos}')
+                return
 
             if amr_ip in self.amr_positions.keys():
                 if self.amr_positions[amr_ip][0] == pos[0] and self.amr_positions[amr_ip][1] == pos[1]:
