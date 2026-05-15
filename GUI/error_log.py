@@ -30,7 +30,7 @@ class ErrorLogPage(ctk.CTkFrame):
         self.scroll_area = ctk.CTkScrollableFrame(self, width=800, height=500)
         self.scroll_area.pack(padx=10, pady=10, fill="both", expand=True)
 
-        self.error_modal = None
+        self._popup_ref = None
 
         # Track last loaded row count
         self.last_count = 0
@@ -84,49 +84,58 @@ class ErrorLogPage(ctk.CTkFrame):
         return f"IP {self.selected_filter}"
 
     def _show_error_popup(self, row):
+        # Close any existing popup
         self._close_error_popup()
 
-        overlay = ctk.CTkFrame(self, fg_color="#0b0e12")
-        overlay.place(relx=0, rely=0, relwidth=1, relheight=1)
-        self.error_modal = overlay
+        from settings import Popup
 
-        popup = ctk.CTkFrame(
-            overlay,
-            fg_color="#171b20",
-            corner_radius=18,
-            border_width=1,
-            border_color="#2f3640",
-            width=520,
-            height=340,
-        )
-        popup.place(relx=0.5, rely=0.5, anchor="center")
+        top = self.winfo_toplevel()
+        popup = Popup(top, title="Error description", width=520, height=340)
+        self._popup_ref = popup
 
-        content = ctk.CTkFrame(popup, fg_color="transparent")
-        content.pack(fill="both", expand=True, padx=18, pady=(0, 18))
+        # Populate popup content with structured fields
+        ctk.CTkLabel(popup.content, text="IP:", font=("Arial", 12, "bold")).pack(anchor="w")
+        ctk.CTkLabel(popup.content, text=str(row["amr_ip"]), font=("Arial", 12)).pack(anchor="w", pady=(0, 6))
 
-        fields = [
-            ("IP", str(row["amr_ip"])),
-            ("Error name", str(row["error"])),
-            ("Error description", str(row["error_desc"] or "No description available.")),
-        ]
+        ctk.CTkLabel(popup.content, text="Error name:", font=("Arial", 12, "bold")).pack(anchor="w")
+        ctk.CTkLabel(popup.content, text=str(row["error"]), font=("Arial", 12)).pack(anchor="w", pady=(0, 6))
 
-        for label, value in fields:
-            field_row = ctk.CTkFrame(content, fg_color="transparent")
-            field_row.pack(fill="x", pady=6)
-            ctk.CTkLabel(field_row, text=f"{label}:", font=("Arial", 12, "bold"), width=140, anchor="w").pack(side="left")
-            ctk.CTkLabel(field_row, text=value, font=("Arial", 12), anchor="w", justify="left", wraplength=280).pack(side="left", fill="x", expand=True)
+        ctk.CTkLabel(popup.content, text="Description:", font=("Arial", 12, "bold")).pack(anchor="w")
+        desc_box = ctk.CTkTextbox(popup.content, height=140)
 
-        ctk.CTkButton(
-            popup,
-            text="Close",
-            width=100,
-            command=self._close_error_popup,
-        ).pack(pady=(0, 18))
+        # Robustly obtain description from different row types (sqlite3.Row or dict)
+        desc = None
+        try:
+            # sqlite3.Row supports mapping access but not `get`
+            if "error_desc" in row.keys():
+                desc = row["error_desc"]
+            elif "description" in row.keys():
+                desc = row["description"]
+            elif "message" in row.keys():
+                desc = row["message"]
+        except Exception:
+            # Fallback for plain dict-like objects
+            try:
+                desc = row.get("error_desc") or row.get("description") or row.get("message")
+            except Exception:
+                desc = None
+
+        if not desc:
+            desc = "No description available."
+
+        desc_box.insert("0.0", str(desc))
+        desc_box.configure(state="disabled")
+        desc_box.pack(fill="both", expand=True, pady=(6, 8))
+
+        ctk.CTkButton(popup.content, text="Close", width=100, command=popup.close).pack(pady=(0, 4))
 
     def _close_error_popup(self):
-        if self.error_modal is not None:
-            self.error_modal.destroy()
-            self.error_modal = None
+        if getattr(self, "_popup_ref", None) is not None:
+            try:
+                self._popup_ref.close()
+            except Exception:
+                pass
+            self._popup_ref = None
 
     def _add_error_row(self, row):
         self._close_error_popup()
