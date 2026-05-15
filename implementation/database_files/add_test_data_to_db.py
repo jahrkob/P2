@@ -81,7 +81,7 @@ if __name__ == '__main__':
             error_type = random.randint(0,9)
             amr_ip = random.randint(2,254)
             new_error = Error(
-                amr_ip=f'192.168.1.{amr_ip}',
+                amr_ip=f'192.168.100.{amr_ip}',
                 error=ErrorTypes[error_type],
                 error_desc=Descriptions[error_type],
                 timestamp=datetime.now()+timedelta(seconds=i)
