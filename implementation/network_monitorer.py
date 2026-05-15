@@ -270,7 +270,7 @@ class NetworkMonitorer:
 
             time.sleep(interval_seconds)
     
-    def get_map(self, testing=True):
+    def get_map(self, testing=False):
         if not testing:
             for amr in self.amr_list:
                 if amr.ip == self.map_amr_ip:
