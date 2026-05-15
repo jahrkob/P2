@@ -44,7 +44,7 @@ class GraphPage(ctk.CTkFrame):
         if metric_name == "jitter":
             return "jitter", "Jitter (ms)", "Jitter Over Time", "#d9822b"
         if metric_name == "ping":
-            return "rtt", "Ping (ms)", "Ping Over Time", "#2d6cdf"
+            return "rtt", "RTT (ms)", "RTT Over Time", "#2d6cdf"
         return None, None, None, None
 
     def get_graph_data(self, amr_ip=None, metric_name="packet_loss"):

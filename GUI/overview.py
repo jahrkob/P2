@@ -12,7 +12,6 @@ class OverviewPage(ctk.CTkFrame):
 
         header = ctk.CTkFrame(self.container, fg_color="transparent")
         header.pack(fill="x", padx=10, pady=(10, 4))
-
         ctk.CTkLabel(header, text="AMR Overview", font=("Arial", 26, "bold")).pack(anchor="w")
 
         self.scroll_area = ctk.CTkScrollableFrame(self.container, fg_color="transparent")
@@ -112,6 +111,12 @@ class OverviewPage(ctk.CTkFrame):
             widget.destroy()
         self.card_widgets = []
 
+    def _close_graph_selector(self):
+        overlay = getattr(self, "graph_selector_overlay", None)
+        if overlay is not None:
+            overlay.destroy()
+            self.graph_selector_overlay = None
+
     def _open_graph(self, amr_ip):
         if self.on_graph_request is not None:
             self.on_graph_request(amr_ip)
@@ -132,8 +137,6 @@ class OverviewPage(ctk.CTkFrame):
     def _create_card(self, amr):
         status = amr.get("status", "OFFLINE")
         badge_fg, badge_border, badge_text, dot = self._status_style(status)
-        health_score = amr.get("health_score")
-        health_fg, health_text, _ = self._health_style(health_score)
         amr_ip = str(amr.get("ip") or amr.get("amr_ip") or "")
         amr_name = amr.get("name") or amr_ip or "?"
         if isinstance(amr_name, str) and amr_name.upper().startswith("AMR #"):
@@ -165,17 +168,7 @@ class OverviewPage(ctk.CTkFrame):
             text_color="#e7eaee"
         ).pack(side="left", padx=16)
 
-        if health_score is not None:
-            ctk.CTkLabel(
-                top_row,
-                text=f"Health {health_score}/100",
-                font=("Arial", 13, "bold"),
-                fg_color=health_fg,
-                text_color=health_text,
-                corner_radius=10,
-                padx=12,
-                pady=6,
-            ).pack(side="left", padx=(0, 12))
+        # Health score removed from AMR records; no badge shown here.
 
         connection_state = self._connection_state(status)
         if connection_state == "stable":
@@ -199,7 +192,7 @@ class OverviewPage(ctk.CTkFrame):
         metric_row.pack(fill="x", padx=16, pady=(6, 10))
         metric_row.grid_columnconfigure((0, 1, 2), weight=1)
 
-        ping_box = self._create_metric_box(metric_row, "ping", amr.get("ping", "-"), "ms", self._metric_visual("ping", amr.get("ping")))
+        ping_box = self._create_metric_box(metric_row, "RTT", amr.get("ping", "-"), "ms", self._metric_visual("ping", amr.get("ping")))
         loss_box = self._create_metric_box(metric_row, "loss", amr.get("loss", "-"), "%", self._metric_visual("loss", amr.get("loss")))
         jitter_box = self._create_metric_box(metric_row, "jitter", amr.get("jitter", "-"), "ms", self._metric_visual("jitter", amr.get("jitter")))
 
@@ -210,17 +203,7 @@ class OverviewPage(ctk.CTkFrame):
         bottom_row = ctk.CTkFrame(card, fg_color="transparent")
         bottom_row.pack(fill="x", padx=16, pady=(0, 14))
 
-        if health_score is not None:
-            ctk.CTkLabel(
-                bottom_row,
-                text=f"Network score: {health_score}/100",
-                font=("Arial", 13, "bold"),
-                fg_color=health_fg,
-                text_color=health_text,
-                corner_radius=10,
-                padx=12,
-                pady=6,
-            ).pack(side="left")
+        # Network score display removed.
 
         ctk.CTkButton(
             bottom_row,
@@ -229,13 +212,71 @@ class OverviewPage(ctk.CTkFrame):
             height=38,
             fg_color="#2d6cdf",
             hover_color="#2458b7",
-            command=lambda ip=amr_ip: self._open_graph(ip) if ip else None,
+            command=lambda ip=amr_ip: self._show_graph_selector(ip) if ip else None,
         ).pack(side="right")
 
         return card
 
+    def _show_graph_selector(self, amr_ip):
+        self._close_graph_selector()
+
+        overlay = ctk.CTkFrame(self, fg_color="#0b0e12")
+        overlay.place(relx=0, rely=0, relwidth=1, relheight=1)
+        self.graph_selector_overlay = overlay
+
+        panel = ctk.CTkFrame(
+            overlay,
+            fg_color="#171b20",
+            corner_radius=18,
+            border_width=1,
+            border_color="#2f3640",
+            width=420,
+            height=300,
+        )
+        panel.place(relx=0.5, rely=0.5, anchor="center")
+
+        ctk.CTkLabel(
+            panel,
+            text="Choose graph view",
+            font=("Arial", 20, "bold"),
+        ).pack(pady=(24, 10))
+
+        ctk.CTkLabel(
+            panel,
+            text=f"AMR {amr_ip}",
+            font=("Arial", 13),
+            text_color="#a9b1bb",
+        ).pack(pady=(0, 16))
+
+        button_frame = ctk.CTkFrame(panel, fg_color="transparent")
+        button_frame.pack(fill="both", expand=True, padx=24, pady=(0, 20))
+
+        def choose(metrics):
+            self._close_graph_selector()
+            if self.on_graph_request is not None:
+                self.on_graph_request(amr_ip, metrics=metrics)
+
+        ctk.CTkButton(button_frame, text="Packet loss", command=lambda: choose(["packet_loss"])).pack(fill="x", pady=6)
+        ctk.CTkButton(button_frame, text="Jitter", command=lambda: choose(["jitter"])).pack(fill="x", pady=6)
+        ctk.CTkButton(button_frame, text="RTT", command=lambda: choose(["ping"])).pack(fill="x", pady=6)
+        ctk.CTkButton(
+            button_frame,
+            text="All three",
+            fg_color="#2d6cdf",
+            hover_color="#2458b7",
+            command=lambda: choose(["packet_loss", "jitter", "ping"]),
+        ).pack(fill="x", pady=(6, 0))
+
+        ctk.CTkButton(
+            panel,
+            text="Close",
+            width=100,
+            command=self._close_graph_selector,
+        ).pack(pady=(0, 18))
+
     def update_amrs(self, amrs):
         self._clear_cards()
+        self._close_graph_selector()
 
         if not amrs:
             self.empty_label.pack(pady=40)
