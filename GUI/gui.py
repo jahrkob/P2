@@ -2,6 +2,7 @@ import customtkinter as ctk  # CustomTkinter library (modern-looking tkinter)
 
 #  NEW IMPORTS
 import sqlite3
+from threading import Thread
 from functools import partial
 from pathlib import Path
 
@@ -69,6 +70,8 @@ class GUI(ctk.CTk):
         auth_token = 'Basic ZGlzdHJpYnV0b3I6NjJmMmYwZjFlZmYxMGQzMTUyYzk1ZjZmMDU5NjU3NmU0ODJiYjhlNDQ4MDY0MzNmNGNmOTI5NzkyODM0YjAxNA==' # should be configurable in settings
         self.network_monitorer = NetworkMonitorer(fleet_manager_ip = self.fleetManager_ip, auth_token = auth_token)
 
+        self.data_polling_thread = Thread(target=partial(self.network_monitorer.active_monitoring,1), daemon=True)
+
         # ===== PAGES =====
         self.frames = {}
 
@@ -82,6 +85,10 @@ class GUI(ctk.CTk):
             frame.grid(row=0, column=0, sticky="nsew")
 
         self.show_frame("overview")
+
+        # ===== start data polling =====
+
+        self.data_polling_thread.start()
 
     # =========================
     # Sidebar UI
@@ -278,7 +285,7 @@ class GUI(ctk.CTk):
             self.notification("Data updated")
             self.last_data_signature = data_signature
 
-        self.update_loop_id = self.after(3000, self.update_loop)
+        self.update_loop_id = self.after(10_000, self.update_loop) #update every 10 seconds
 
     # =========================
     # CLEANUP
