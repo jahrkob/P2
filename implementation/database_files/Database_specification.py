@@ -25,7 +25,7 @@ db = SQLAlchemy(app)
 class Data(db.Model):
     __tablename__ = 'data'
     id = sql.Column(sql.Integer, primary_key=True)
-    amr_ip = sql.Column(sql.Integer,sql.ForeignKey('amr.ip'), nullable=False)
+    amr_ip = sql.Column(sql.String(39),sql.ForeignKey('amr.ip'), nullable=False)
     amr = db.relationship('AMR', back_populates='data')
     timestamp = sql.Column(sql.DateTime, default=datetime.now, nullable=False)
     rtt = sql.Column(sql.Float)
@@ -53,7 +53,7 @@ class AMR(db.Model):
 class Error(db.Model):
     __tablename__ = 'error'
     id = sql.Column(sql.Integer, primary_key=True)
-    amr_ip = sql.Column(sql.Integer,sql.ForeignKey('amr.ip'), nullable=False)
+    amr_ip = sql.Column(sql.String(39),sql.ForeignKey('amr.ip'), nullable=False)
     amr = db.relationship('AMR', back_populates='error')
     timestamp = sql.Column(sql.DateTime, default=datetime.now, nullable=False)
     error = sql.Column(sql.Text, nullable=False)

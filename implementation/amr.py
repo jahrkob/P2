@@ -1,9 +1,15 @@
 import requests
+import threading
 
 import sys
-cur_parent_dirs = sys.path[0].split('\\')
-parent_dir_index = cur_parent_dirs.index("P2")+1
-sys.path.append("\\".join(cur_parent_dirs[0:parent_dir_index])) # allows imports from P2 folder
+
+if sys.platform == "linux":
+    file_sep = '/'
+else:
+    file_sep = '\\'
+cur_parent_dirs = sys.path[0].split(file_sep)
+parent_dir_index = cur_parent_dirs.index("P2")
+sys.path.append(file_sep.join(cur_parent_dirs[0:parent_dir_index+1])) # allows imports from P2 folder
 
 from implementation.internet_device import InternetDevice
 
@@ -28,13 +34,19 @@ class AMR(InternetDevice):
             "accept": "application/json"
         }
         self.status = {}
+        self.is_on = True
+        self.lock = threading.Lock()
 
-    def get_status(self):
-        response = requests.get(f"{self.base_url}/status", headers=self.headers)
+    def get_status(self, timeout=2):
+        response = requests.get(f"{self.base_url}/status", headers=self.headers, timeout=timeout)
 
         response.raise_for_status()
-        self.status = response.json()
-        self.status_code = response.status_code
+        status = response.json()
+
+        with self.lock:
+            self.status = status
+            self.status_code = response.status_code
+            self.is_on = True
 
         # map_id er måske ikke så vigtig
 
@@ -89,7 +101,9 @@ class AMR(InternetDevice):
     def get_errors(self):
         if not self.status: # Opdaterer status hvis den ikke har en endnu, da errors ellers ville være tom. Kan evt. fjernes
             self.get_status() 
-        return self.status.get("errors", []) or []
+        
+        with self.lock:
+            return self.status.get("errors", []) or []
 
     def get_battery_percentage(self):
         return self.status.get("battery_percentage")

@@ -4,13 +4,18 @@ from enum import StrEnum
 
 ##### importing same project files #####
 import sys
-cur_parent_dirs = sys.path[0].split('\\')
+
+if sys.platform == "linux":
+    file_sep = '/'
+else:
+    file_sep = '\\'
+cur_parent_dirs = sys.path[0].split(file_sep)
 parent_dir_index = cur_parent_dirs.index("P2")
-sys.path.append("\\".join(cur_parent_dirs[0:parent_dir_index+1])) # allows imports from P2 folder
+sys.path.append(file_sep.join(cur_parent_dirs[0:parent_dir_index+1])) # allows imports from P2 folder
 
 
 from implementation.amr import AMR
-from implementation.raspberry_pi_files.RaspberryPi import RaspberryPi
+from implementation.raspberry_pi_files.RaspberryPi import RaspberryPi # is to be changed to LOraWAN file
 
 from implementation.database_files.Database_specification import app, db
 import implementation.database_files.Database_specification as db_spec
@@ -27,14 +32,17 @@ class TableNames(StrEnum):
     data = 'data'
 
 
+import threading
+
 class NetworkMonitorer:
     """Class to monitor the network and manage the fleet of AMRs."""
 
     def __init__(self, fleet_manager_ip, auth_token = None): # evt kom tilbage til init, da vi lige skal være sikre på hvilke parametre den skal bruge
         self.fleet_manager_ip = fleet_manager_ip
-        #self.database = database
         self.auth_token = auth_token
-        self.amr_list: list[AMR] = []
+        self.amr_list_lock = threading.Lock()
+        with self.amr_list_lock:
+            self.amr_list: list[AMR] = []
         self.load_amr_database()
         self.map_amr_ip:str = '192.168.100.51' # which AMR to request MAP GUID from (cannot be changed for now)
         self.current_map_guid:str = "7ecbf116-0d8e-11f1-b640-000129922d00" # (cannot be changed for now)
@@ -53,7 +61,8 @@ class NetworkMonitorer:
             db_amr_list = db.session.query(db_spec.AMR).all()
         
         for amr_spec in db_amr_list:
-            self.amr_list.append(AMR(amr_spec.ip,amr_spec.name,amr_spec.dev_eui,self.auth_token))
+            with self.amr_list_lock:
+                self.amr_list.append(AMR(amr_spec.ip, amr_spec.name, amr_spec.raspi_ip, self.auth_token))
         
         return db_amr_list
 
@@ -66,9 +75,18 @@ class NetworkMonitorer:
                 self.amr_list.append(AMR(ip, name, dev_eui, self.auth_token))
                 return True
         
+                with self.amr_list_lock:
+                    self.amr_list.append(AMR(ip, name, raspi_ip, self.auth_token))
+
         except sqlalchemy.exc.IntegrityError as e:
+            with app.app_context():
+                db.session.rollback()
             print(str(e).replace('\n', ' '))
-            return False
+
+        except Exception as e:
+            with app.app_context():
+                db.session.rollback()
+            print("Error: ", e)
 
     def remove_amr_from_database(self, ip):
         """Removes an AMR from all tables in the database"""
@@ -77,6 +95,7 @@ class NetworkMonitorer:
         try: # try except ensures that data will only be deleted if it succeeds in deleting the specific AMR from ALL tables, else nothing is deleted
             with app.app_context():
                 delete_user = db.session.query(db_spec.AMR).filter_by(ip=ip).first()
+                
                 if delete_user:
                     db.session.delete(delete_user)
                     db.session.commit()
@@ -85,7 +104,12 @@ class NetworkMonitorer:
                     print(f'AMR with IP={ip} does not exist - cannot be deleted')
                     return False
 
+            with self.amr_list_lock:
+                self.amr_list = [amr for amr in self.amr_list if amr.ip != ip]
+
         except Exception as e:
+            with app.app_context():
+                db.session.rollback()
             print("Error: ", e)
             return False
 
@@ -199,6 +223,7 @@ class NetworkMonitorer:
         battery = None
         pos_x = None
         pos_y = None
+        status = None
 
         try:
             #amr.update_status() # vi skal finde ud af om vi bruge get eller update
@@ -216,10 +241,22 @@ class NetworkMonitorer:
         except Exception as e:
             self.save_amr_error(amr.ip, "PING_ERROR", str(e))
 
-        try:
-            metrics = RaspberryPi.get_signal_metrics()
+        try: # denne funktionalitet er til når LoraWAN er implementeret
+            # metrics = LoraWAN(f"{amr.name}'s rasp", amr.raspi_ip, 5000).get_signal_metrics()
+            # quality, noise, rssi = metrics['quality'], metrics['noise'], metrics['rssi']
+            pass
         except Exception as e:
-            self.save_amr_error(amr.ip, "RASPI_METRICS_ERROR", str(e))
+            self.save_amr_error(amr.ip, "LORAWAN_METRICS_ERROR", str(e))
+
+        if status:
+            try:
+                battery = status['battery_percentage'] # måske skift til at bruge get, hvis der opstår fejl (burde dog ikke være nødvendigt)
+                pos_x = status['position']['x']
+                pos_y = status['position']['y']
+            except KeyError as e:
+                self.save_amr_error(amr.ip, "STATUS_FORMAT_ERROR", f"Missing key: {e}")
+        else:
+            self.save_amr_error(amr.ip, "GET_STATUS_ERROR", "get_status() failed")
 
         self.save_amr_data(
             amr_ip=amr.ip,
@@ -228,21 +265,22 @@ class NetworkMonitorer:
             packet_loss=packet_loss,
             quality=quality,
             noise=noise,
-            rssi=None,
-            battery=status['battery_percentage'],
-            pos_x=status['position']['x'],
-            pos_y=status['position']['x']
+            rssi=rssi,
+            battery=battery,
+            pos_x=pos_x,
+            pos_y=pos_y
         )
 
         print(
-            f"{amr.name} | "
-            f"Battery: {battery} | "
-            f"Pos: ({status['position']['x']}, {status['position']['y']}) | "
+            f"{amr.name} ({amr.ip}) | "
             f"RTT: {rtt} ms | "
             f"Jitter: {jitter} ms | "
             f"Packet loss: {packet_loss}% | "
+            f"Quality: {quality} | "
+            f"Noise: {noise} | "
             f"RSSI: {rssi} | "
-            f"Battery: {status['battery_percentage']}"
+            f"Battery: {battery} | "
+            f"Pos: ({pos_x}, {pos_y})"
         )
 
     def active_monitoring(self, interval_seconds=5, cycles=None, reload_from_database=True):
