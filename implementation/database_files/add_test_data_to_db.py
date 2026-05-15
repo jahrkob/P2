@@ -1,6 +1,19 @@
 from Database_specification import db, app, Data, AMR, Error
 import random
 from datetime import datetime, timedelta
+from time import sleep
+
+import sys
+
+if sys.platform == "linux":
+    file_sep = '/'
+else:
+    file_sep = '\\'
+cur_parent_dirs = sys.path[0].split(file_sep)
+parent_dir_index = cur_parent_dirs.index("P2")
+sys.path.append(file_sep.join(cur_parent_dirs[0:parent_dir_index+1])) # allows imports from P2 folder
+
+from implementation.network_monitorer import NetworkMonitorer
 
 """
 
@@ -37,16 +50,16 @@ Descriptions = [
 
 if __name__ == '__main__':
     AMR_list = []
+    network_monitorer = NetworkMonitorer('','')
 
     with app.app_context():
         db.drop_all() # remove current tables in database.db
         db.create_all() # create new tables in database.db
 
         for i in range(2,255):
-            new_amr = AMR(ip=f'192.168.100.{i}',name=f'AMR #{i}',dev_eui=f'192.168.2.{i}')
-            AMR_list.append(new_amr)
-            db.session.add(new_amr)
-        db.session.commit()
+            network_monitorer.add_amr_to_database(ip=f'192.168.100.{i}',name=f'AMR #{i}',dev_eui=f'192.168.2.{i}')
+            AMR_list.append(f'192.168.100.{i}')
+        print("AMR's created")
 
         # Create test data with timestamps spread across 1 hour
         base_time = datetime.now() - timedelta(hours=1)
@@ -57,25 +70,26 @@ if __name__ == '__main__':
             timestamp = base_time + time_offset
             
             new_data = Data(
-                amr_ip=AMR_list[i%253].ip,
+                amr_ip=AMR_list[i%253],
                 timestamp=timestamp,
             )
         
-        for i in range(1000):
+        for i in range(1000*255):
             new_data = Data(
-                amr_ip=AMR_list[i%253].ip,
+                amr_ip=AMR_list[i%253],
                 rtt=random.random()*40,
                 jitter=random.random()*10,
                 packet_loss=random.random()*0.1,
                 quality=random.random()*(-72),
                 noise=random.random()*(-80),
                 battery=(1000-i)/1000,
-                pos_x=1.002**i,
-                pos_y=-0.000004*i,
+                pos_x=0.0102*(i),
+                pos_y=-0.01*(i),
                 timestamp=datetime.now()+timedelta(seconds=i)
             )
             db.session.add(new_data)
-        db.session.commit()
+            sleep(0.1/255)
+            db.session.commit()
 
         for i in range(100):
             error_type = random.randint(0,9)

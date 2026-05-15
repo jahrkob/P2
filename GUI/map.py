@@ -81,6 +81,7 @@ class MapPage(ctk.CTkFrame):
                 
                 self.image = self.__set_image_from_base64(base64_image)
                 self.__create_image(self.image)
+                self.__image_bbox = self.canvas.bbox(self.__image_id)
             else:
                 if not self.__reload_map_button:
                     self.__create_reload_map_button()
@@ -171,11 +172,15 @@ class MapPage(ctk.CTkFrame):
                 print('WARNING: self.__image_id not defined in update_position')
                 return
 
-            x1, y1, x2, y2 = self.canvas.bbox(self.__image_id)
-
             if not pos:
                 print('WARNING: self.update_position given no position')
                 return
+
+            if amr_ip in self.amr_positions.keys():
+                if self.amr_positions[amr_ip][0] == pos[0] and self.amr_positions[amr_ip][1] == pos[1]:
+                    return
+
+            x1, y1, x2, y2 = self.__image_bbox
 
             pixel_x = (pos[0] - self.__origin[0])/self.__resolution
             pixel_y = (y2-y1) - (pos[1] - self.__origin[1])/self.__resolution
@@ -209,7 +214,11 @@ class MapPage(ctk.CTkFrame):
 
     def pan(self, event):
         self.canvas.scan_dragto(event.x, event.y, gain=1)
+        self.__image_bbox = self.canvas.bbox(self.__image_id)
     
+    def get_image_id(self):
+        return self.__image_id
+
     # def zoom(self, event):
     #     self.factor = 1.1 if event.delta > 0 else 0.9
 
