@@ -2,7 +2,7 @@ from network_monitorer import *
 from amr import *
 from data_grapher import *
 from internet_device import *
-from raspberry_pi_files.RaspberryPi import *
+from raspberry_pi_files.RaspberryPi import * # is to be changed to LOraWAN file
 import time
 import requests
 

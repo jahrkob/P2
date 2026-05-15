@@ -14,7 +14,7 @@ sys.path.append(file_sep.join(cur_parent_dirs[0:parent_dir_index+1])) # allows i
 
 
 from implementation.amr import AMR
-from implementation.raspberry_pi_files.RaspberryPi import RaspberryPi
+from implementation.raspberry_pi_files.RaspberryPi import RaspberryPi # is to be changed to LOraWAN file
 
 from implementation.database_files.Database_specification import app, db
 import implementation.database_files.Database_specification as db_spec
