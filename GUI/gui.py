@@ -157,7 +157,7 @@ class GUI(ctk.CTk):
 
         ctk.CTkButton(
             button_frame,
-            text="Ping",
+            text="RTT",
             command=lambda: choose(["ping"]),
         ).pack(fill="x", pady=6)
 
@@ -175,17 +175,11 @@ class GUI(ctk.CTk):
         loss_value = None if packet_loss is None else float(packet_loss)
 
         if ping_value is None and jitter_value is None and loss_value is None:
-            return "OFFLINE", None
+            return "OFFLINE"
 
         ping_value = 0.0 if ping_value is None else ping_value
         jitter_value = 0.0 if jitter_value is None else jitter_value
         loss_value = 0.0 if loss_value is None else loss_value
-
-        score = 100.0
-        score -= ping_value * 0.2
-        score -= jitter_value * 1.5
-        score -= loss_value * 15.0
-        score = round(max(0.0, min(100.0, score)), 1)
 
         if loss_value > 5 or ping_value > 150 or jitter_value > 30:
             status = "CRITICAL"
@@ -194,7 +188,7 @@ class GUI(ctk.CTk):
         else:
             status = "ONLINE"
 
-        return status, score
+        return status
 
     def get_database_path(self):
         project_root = Path(__file__).resolve().parent.parent
@@ -251,14 +245,13 @@ class GUI(ctk.CTk):
             if latest_data is not None and latest_data["rtt"] is not None:
                 ping = round(float(latest_data["rtt"]), 1)
 
-            status, health_score = self._calculate_network_health(ping, jitter, packet_loss)
+            status = self._calculate_network_health(ping, jitter, packet_loss)
 
             amrs.append(
                 {
                     "name": amr["name"],
                     "ip": amr_ip,
                     "status": status,
-                    "health_score": health_score,
                     "ping": ping,
                     "loss": packet_loss,
                     "jitter": jitter,

@@ -132,8 +132,6 @@ class OverviewPage(ctk.CTkFrame):
     def _create_card(self, amr):
         status = amr.get("status", "OFFLINE")
         badge_fg, badge_border, badge_text, dot = self._status_style(status)
-        health_score = amr.get("health_score")
-        health_fg, health_text, _ = self._health_style(health_score)
         amr_ip = str(amr.get("ip") or amr.get("amr_ip") or "")
         amr_name = amr.get("name") or amr_ip or "?"
         if isinstance(amr_name, str) and amr_name.upper().startswith("AMR #"):
@@ -165,17 +163,7 @@ class OverviewPage(ctk.CTkFrame):
             text_color="#e7eaee"
         ).pack(side="left", padx=16)
 
-        if health_score is not None:
-            ctk.CTkLabel(
-                top_row,
-                text=f"Health {health_score}/100",
-                font=("Arial", 13, "bold"),
-                fg_color=health_fg,
-                text_color=health_text,
-                corner_radius=10,
-                padx=12,
-                pady=6,
-            ).pack(side="left", padx=(0, 12))
+        # Health score removed from AMR records; no badge shown here.
 
         connection_state = self._connection_state(status)
         if connection_state == "stable":
@@ -199,7 +187,7 @@ class OverviewPage(ctk.CTkFrame):
         metric_row.pack(fill="x", padx=16, pady=(6, 10))
         metric_row.grid_columnconfigure((0, 1, 2), weight=1)
 
-        ping_box = self._create_metric_box(metric_row, "ping", amr.get("ping", "-"), "ms", self._metric_visual("ping", amr.get("ping")))
+        ping_box = self._create_metric_box(metric_row, "RTT", amr.get("ping", "-"), "ms", self._metric_visual("ping", amr.get("ping")))
         loss_box = self._create_metric_box(metric_row, "loss", amr.get("loss", "-"), "%", self._metric_visual("loss", amr.get("loss")))
         jitter_box = self._create_metric_box(metric_row, "jitter", amr.get("jitter", "-"), "ms", self._metric_visual("jitter", amr.get("jitter")))
 
@@ -210,17 +198,7 @@ class OverviewPage(ctk.CTkFrame):
         bottom_row = ctk.CTkFrame(card, fg_color="transparent")
         bottom_row.pack(fill="x", padx=16, pady=(0, 14))
 
-        if health_score is not None:
-            ctk.CTkLabel(
-                bottom_row,
-                text=f"Network score: {health_score}/100",
-                font=("Arial", 13, "bold"),
-                fg_color=health_fg,
-                text_color=health_text,
-                corner_radius=10,
-                padx=12,
-                pady=6,
-            ).pack(side="left")
+        # Network score display removed.
 
         ctk.CTkButton(
             bottom_row,
