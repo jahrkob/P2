@@ -215,10 +215,12 @@ class NetworkMonitorer:
         except Exception as e:
             self.save_amr_error(amr.ip, "PING_ERROR", str(e))
 
-        try:
-            quality, noise, rssi = RaspberryPi(f"{amr.name}'s rasp", amr.raspi_ip, 5000).get_signal_metrics()
+        try: # denne funktionalitet er til når LoraWAN er implementeret
+            # metrics = LoraWAN(f"{amr.name}'s rasp", amr.raspi_ip, 5000).get_signal_metrics()
+            # quality, noise, rssi = metrics['quality'], metrics['noise'], metrics['rssi']
+            pass
         except Exception as e:
-            self.save_amr_error(amr.ip, "RASPI_METRICS_ERROR", str(e))
+            self.save_amr_error(amr.ip, "LORAWAN_METRICS_ERROR", str(e))
 
         if status:
             try:
