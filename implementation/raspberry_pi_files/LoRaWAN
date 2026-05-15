@@ -1,91 +1,329 @@
 import serial
 import time
 import struct
+import os
+import sys
 
-port = serial.Serial('/dev/ttyUSB0', 9600, timeout=3) #'/dev/ttyUSB0' is the typical port for a USB-to-serial adapter on Linux (Don't know if there is a universal solution)
 
-def send_at(cmd, wait=1):
-    port.write((cmd + '\r\n').encode())
-    time.sleep(wait)
-    response = port.read_all().decode(errors='ignore')
-    print(f">> {cmd}\n<< {response.strip()}\n")
-    return response
+# ---------------------------------------------------------------------------
+# Exceptions
+# ---------------------------------------------------------------------------
 
-def is_joined():
-    """Check join status via AT+NJS (join status query)."""
-    response = send_at('AT+NJS=?', wait=1)
-    return '1' in response
-
-def join_network(max_attempts=5, base_wait=10):
+class MissingSystemFiles(Exception):
     """
-    Attempt OTAA join with retries and exponential backoff.
-    Returns True if joined, False if all attempts failed.
+    Raised when an essential OS-specific file is missing.
+    Likely caused by running on an unsupported operating system.
     """
-    for attempt in range(1, max_attempts + 1):
-        print(f"Join attempt {attempt}/{max_attempts}.")
-        response = send_at('AT+JOIN', wait=base_wait)
+    pass
 
-        if 'Network joined' in response or 'JOINED' in response.upper():
-            print("Join confirmed in response.")
-            return True
 
-        if is_joined():
-            print("Join confirmed via status query.")
-            return True
+class JoinError(Exception):
+    """Raised when all OTAA join attempts are exhausted."""
+    pass
 
-        if 'busy' in response.lower():
-            print("  Module busy — waiting longer before retry.")
-            time.sleep(10)
-        elif attempt < max_attempts:
-            backoff = base_wait + attempt * 5
-            print(f"  Join failed. Waiting {backoff}s before retry.")
-            time.sleep(backoff)
 
-    print("All join attempts failed.")
-    return False
+# ---------------------------------------------------------------------------
+# Serial / AT layer
+# ---------------------------------------------------------------------------
 
-def check_downlink(response):
-    if '+RECV' in response:
-        print("Downlink signalled — fetching details.")
-        dl = send_at('AT+RECVB=?', wait=2)
+class ATInterface:
+    """
+    Low-level wrapper around a serial port that sends AT commands
+    and returns the module's response as a string.
+    """
+
+    def __init__(self, port: str = '/dev/ttyUSB0', baud: int = 9600, timeout: int = 3):
+        """
+        Args:
+            port:    Serial device path.  '/dev/ttyUSB0' is typical on Linux
+                     for a USB-to-serial adapter; adjust for your OS.
+            baud:    Most Dragino / RAK / Seeed LoRa modules default to 115200.
+            timeout: Read timeout in seconds.
+        """
+        self.port = serial.Serial(port, baud, timeout=timeout)
+
+    def send(self, cmd: str, wait: float = 1.0) -> str:
+        """
+        Write *cmd* to the serial port, wait *wait* seconds, then return
+        everything the module sent back.
+        """
+        self.port.write((cmd + '\r\n').encode())
+        time.sleep(wait)
+        response = self.port.read_all().decode(errors='ignore')
+        print(f">> {cmd}\n<< {response.strip()}\n")
+        return response
+
+    def ping(self) -> bool:
+        """Send a bare AT and return True if the module replies with OK."""
+        return 'OK' in self.send('AT', wait=1)
+
+    def reset(self) -> str:
+        """Soft-reset the module (clears prior join state)."""
+        return self.send('ATZ', wait=3)
+
+    def close(self):
+        """Close the underlying serial port."""
+        self.port.close()
+
+
+# ---------------------------------------------------------------------------
+# Wireless info (Wi-Fi RSSI from /proc/net/wireless)
+# ---------------------------------------------------------------------------
+
+class WirelessInfo:
+    """
+    Reads Wi-Fi signal quality from the Linux pseudo-file /proc/net/wireless.
+    Only works on Linux; raises MissingSystemFiles on other platforms.
+    """
+
+    PROC_PATH = '/proc/net/wireless'
+
+    @classmethod
+    def get(cls, interface: str = 'wlan0') -> dict | None:
+        """
+        Return a dict with keys 'rssi', 'quality', 'noise' for *interface*,
+        or None if the interface is not listed.
+
+        Raises:
+            MissingSystemFiles: if /proc/net/wireless doesn't exist.
+        """
+        if not os.path.isfile(cls.PROC_PATH):
+            raise MissingSystemFiles(
+                f'"{cls.PROC_PATH}" does not exist. '
+                f'Are you on Linux? Current platform: {sys.platform}'
+            )
+
+        with open(cls.PROC_PATH) as f:
+            lines = f.readlines()
+
+        for line in lines[2:]:          # first two lines are headers
+            if line.strip().startswith(interface):
+                parts = line.split()
+                return {
+                    'rssi':    float(parts[3]),
+                    'quality': float(parts[2]),
+                    'noise':   float(parts[4]) if float(parts[4]) != -256.0 else None,
+                }
+
+        print(f'Could not find "{interface}" in "{cls.PROC_PATH}".')
+        return None
+
+
+# ---------------------------------------------------------------------------
+# LoRaWAN module
+# ---------------------------------------------------------------------------
+
+class LoRaWAN:
+    """
+    High-level interface for a Dragino LA66 (or compatible) LoRaWAN module
+    connected via AT commands over a serial port.
+
+    Handles configuration, OTAA joining (with retries and backoff),
+    uplink sends, and downlink reception.
+    """
+
+    def __init__(
+        self,
+        at: ATInterface,
+        app_eui: str,
+        app_key: str,
+        adr: bool  = True,
+        join_dr: int = 0,   # DR0 = SF12, best range for initial join
+    ):
+        """
+        Args:
+            at:      An ATInterface instance already connected to the module.
+            app_eui: 16-hex-digit Application EUI (must match network server).
+            app_key: 32-hex-digit Application Key (must match network server).
+            adr:     Re-enable Adaptive Data Rate after joining.
+            join_dr: Data rate used during join (0 = SF12 gives most range).
+        """
+        self.at      = at
+        self.app_eui = app_eui
+        self.app_key = app_key
+        self.adr     = adr
+        self.join_dr = join_dr
+
+    # ------------------------------------------------------------------
+    # Setup
+    # ------------------------------------------------------------------
+
+    def configure(self):
+        """
+        Push all credentials and radio parameters to the module.
+        Call this once before attempting to join.
+        """
+        at.reset()                                 # clear any stale session
+        time.sleep(6)                              # wait for module to fully boot after reset
+        at.send('AT+NJM=1')                        # OTAA mode
+        # Note: AT+BAND is intentionally omitted — the LA66 EU868 firmware
+        # has the band hardcoded and returns AT_ERROR if you try to set it.
+        at.send(f'AT+APPEUI={self.app_eui}')
+        at.send(f'AT+APPKEY={self.app_key}')
+        # ADR must be disabled before setting DR, otherwise AT+DR is ignored.
+        # ADR is re-enabled after a successful join inside join().
+        at.send('AT+ADR=5')
+        at.send(f'AT+DR={self.join_dr}')           # DR0 = SF12, best range for joining
+
+    # ------------------------------------------------------------------
+    # Join
+    # ------------------------------------------------------------------
+
+    def is_joined(self) -> bool:
+        """
+        Query the module's actual join status.
+        Returns True only when AT+NJS=? replies with a line that is exactly '1'.
+        
+        Bug fix: previously used `'1' in response` which matched the '1' in
+        "OK" or other incidental characters, causing false positives.
+        """
+        response = self.at.send('AT+NJS=?', wait=1)
+        return any(line.strip() == '1' for line in response.splitlines())
+
+    def join(self, max_attempts: int = 5, base_wait: float = 15.0) -> bool:
+        """
+        Attempt OTAA join with retries and linear backoff.
+
+        Args:
+            max_attempts: Maximum number of AT+JOIN attempts.
+            base_wait:    Seconds to wait for each join response.
+                          Should be at least 10–15 s to cover both RX windows.
+
+        Returns:
+            True if joined, False if all attempts failed.
+        """
+        for attempt in range(1, max_attempts + 1):
+            print(f'Join attempt {attempt}/{max_attempts}.')
+            response = self.at.send('AT+JOIN', wait=base_wait)
+
+            if 'Network joined' in response or 'JOINED' in response.upper():
+                print('Join confirmed in response.')
+                if self.adr:
+                    self.at.send('AT+ADR=1')       # re-enable ADR now that we're joined
+                return True
+
+            if self.is_joined():
+                print('Join confirmed via status query.')
+                if self.adr:
+                    self.at.send('AT+ADR=1')       # re-enable ADR now that we're joined
+                return True
+
+            if 'busy' in response.lower():
+                print('  Module busy — waiting before retry.')
+                time.sleep(10)
+            elif attempt < max_attempts:
+                backoff = base_wait + attempt * 5
+                print(f'  Join failed. Waiting {backoff:.0f}s before retry.')
+                time.sleep(backoff)
+
+        print('All join attempts failed.')
+        return False
+
+    # ------------------------------------------------------------------
+    # Uplink
+    # ------------------------------------------------------------------
+
+    def send_bytes(
+        self,
+        payload: bytes,
+        fport: int  = 2,
+        confirmed: bool = False,
+        wait: float = 3.0,
+    ) -> str:
+        """
+        Send a raw bytes payload as a hex uplink.
+
+        Args:
+            payload:   Raw bytes to transmit.
+            fport:     LoRaWAN FPort (1-223).
+            confirmed: If True, request a network ACK (AT+SENDB=01,...).
+            wait:      Seconds to wait for TX/RX windows to complete.
+
+        Returns:
+            The full AT response string.
+        """
+        hex_payload = payload.hex().upper()
+        nbytes      = len(payload)
+        confirm_flag = '01' if confirmed else '00'
+        cmd = f'AT+SENDB={confirm_flag},{fport:02d},{nbytes},{hex_payload}'
+        response = self.at.send(cmd, wait=wait)
+        self._check_downlink(response)
+        return response
+
+    # ------------------------------------------------------------------
+    # Downlink
+    # ------------------------------------------------------------------
+
+    def _check_downlink(self, response: str):
+        """
+        If *response* signals a downlink (+RECV), fetch and print its contents.
+        Called automatically by send_bytes.
+        """
+        if '+RECV' not in response:
+            print('  No downlink in this window.')
+            return
+
+        print('Downlink signalled — fetching details.')
+        dl = self.at.send('AT+RECVB=?', wait=2)
+
         for line in dl.splitlines():
-            if ':' in line:
-                
-                parts = line.strip().split(':')
-                fport   = parts[0] if len(parts) > 0 else '?'
-                payload = parts[1] if len(parts) > 1 else '(empty)'
-                print(f"↓ Downlink on FPort {fport}: {payload} ({int(len(payload)/2)} bytes)")
-    else:
-        print("  No downlink in this window")
+            # Most modules return: <fport>,<len>,<hex_payload>
+            parts = line.strip().split(',')
+            if len(parts) >= 3:
+                fport   = parts[0]
+                nbytes  = parts[1]
+                payload = parts[2]
+                print(f'↓ Downlink on FPort {fport}: {payload} ({nbytes} bytes)')
 
-# Configure OTAA credentials
-send_at('AT+NJM=1')
-send_at('AT+APPEUI=0000000000000000')
-send_at('AT+APPKEY=5A70D1B2752B54A34BF635DC0F3B4042')
 
-# Enable ADR so the network can push us to the fastest data rate
-send_at('AT+ADR=1')
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
 
-# Set DR5 (SF7) as the starting data rate for shortest airtime
-send_at('AT+DR=5')
+def main():
+    # --- Serial connection ---------------------------------------------------
+    at = ATInterface(port='/dev/ttyUSB0', baud=9600)
 
-# Join with retry logic
-print("Joining network")
-if join_network(max_attempts=5, base_wait=5):
-    print("Sending data")
+    if not at.ping():
+        print('Warning: No response to AT ping — continuing anyway.')
 
-    # Example payload: RSSI, Noise, Quality (3 bytes total) for test
-    rssi    = -72   # example: dBm, negative
-    noise   = -95   # example: dBm, negative
-    quality = 68    # example: 0-100 percentage
+    # --- LoRaWAN setup -------------------------------------------------------
+    # Replace APPEUI and APPKEY with the values registered on your network server.
+    # Your DevEUI is burned into the module (shown on ATZ reset output).
+    lora = LoRaWAN(
+        at      = at,
+        app_eui = '0000000000000000',           # ← replace with real value
+        app_key = '5A70D1B2752B54A34BF635DC0F3B4042',  # ← replace with real value
+        adr     = True,
+        join_dr = 0,    # SF12 for join; ADR will optimise after joining
+    )
 
-    payload_bytes = struct.pack('bbB', rssi, noise, quality)
-    payload_hex   = payload_bytes.hex().upper()
-    # e.g. "B8A144" — send this as AT+SENDB=00,02,3,B8A144
-    # 00 = unconfirmed uplink (fire and forget, no ACK wait)
-    response = send_at(f'AT+SENDB=00,02,3,{payload_hex}', wait=3)
-    
-else:
-    print("Aborting — could not join network.")
+    lora.configure()
 
-port.close()
+    # --- Join ----------------------------------------------------------------
+    print('Joining network…')
+    if not lora.join(max_attempts=5, base_wait=15):
+        print('Aborting — could not join network.')
+        at.close()
+        return
+
+    # --- Build payload from Wi-Fi info (or fall back to example values) ------
+    print('Sending data…')
+    try:
+        info    = WirelessInfo.get('wlan0')
+        rssi    = int(info['rssi'])    if info else -72
+        noise   = int(info['noise'])   if (info and info['noise'] is not None) else -95
+        quality = int(info['quality']) if info else 68
+    except MissingSystemFiles as exc:
+        print(f'Warning: {exc}')
+        rssi, noise, quality = -72, -95, 68
+
+    # Pack as: rssi (signed byte), noise (signed byte), quality (unsigned byte)
+    payload = struct.pack('bbB', rssi, noise, quality)
+    lora.send_bytes(payload, fport=2)
+
+    at.close()
+
+
+if __name__ == '__main__':
+    main()

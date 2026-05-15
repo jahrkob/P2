@@ -45,7 +45,7 @@ def get_wireless_info(interface="wlan0"):
 
         if not lines[2:]:
             print(f'could not find match for "{interface}" in "/proc/net/wireless"')
-            abort(404)
+            return
 
     for line in lines[2:]:
         line.strip().startswith(interface)
