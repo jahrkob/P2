@@ -112,6 +112,14 @@ class OverviewPage(ctk.CTkFrame):
         self.card_widgets = []
 
     def _close_graph_selector(self):
+        # Close popup created via Popup class if present
+        if getattr(self, "_graph_popup_ref", None) is not None:
+            try:
+                self._graph_popup_ref.close()
+            except Exception:
+                pass
+            self._graph_popup_ref = None
+            return
         overlay = getattr(self, "graph_selector_overlay", None)
         if overlay is not None:
             overlay.destroy()
@@ -220,59 +228,26 @@ class OverviewPage(ctk.CTkFrame):
     def _show_graph_selector(self, amr_ip):
         self._close_graph_selector()
 
-        overlay = ctk.CTkFrame(self, fg_color="#0b0e12")
-        overlay.place(relx=0, rely=0, relwidth=1, relheight=1)
-        self.graph_selector_overlay = overlay
+        from settings import Popup
+        top = self.winfo_toplevel()
+        popup = Popup(top, title="Choose graph view", width=520, height=300)
+        self._graph_popup_ref = popup
 
-        panel = ctk.CTkFrame(
-            overlay,
-            fg_color="#171b20",
-            corner_radius=18,
-            border_width=1,
-            border_color="#2f3640",
-            width=420,
-            height=300,
-        )
-        panel.place(relx=0.5, rely=0.5, anchor="center")
-
-        ctk.CTkLabel(
-            panel,
-            text="Choose graph view",
-            font=("Arial", 20, "bold"),
-        ).pack(pady=(24, 10))
-
-        ctk.CTkLabel(
-            panel,
-            text=f"AMR {amr_ip}",
-            font=("Arial", 13),
-            text_color="#a9b1bb",
-        ).pack(pady=(0, 16))
-
-        button_frame = ctk.CTkFrame(panel, fg_color="transparent")
-        button_frame.pack(fill="both", expand=True, padx=24, pady=(0, 20))
+        ctk.CTkLabel(popup.content, text=f"AMR {amr_ip}", font=("Arial", 13), text_color="#a9b1bb").pack(pady=(0, 8))
 
         def choose(metrics):
-            self._close_graph_selector()
+            try:
+                popup.close()
+            except Exception:
+                pass
+            self._graph_popup_ref = None
             if self.on_graph_request is not None:
                 self.on_graph_request(amr_ip, metrics=metrics)
 
-        ctk.CTkButton(button_frame, text="Packet loss", command=lambda: choose(["packet_loss"])).pack(fill="x", pady=6)
-        ctk.CTkButton(button_frame, text="Jitter", command=lambda: choose(["jitter"])).pack(fill="x", pady=6)
-        ctk.CTkButton(button_frame, text="RTT", command=lambda: choose(["ping"])).pack(fill="x", pady=6)
-        ctk.CTkButton(
-            button_frame,
-            text="All three",
-            fg_color="#2d6cdf",
-            hover_color="#2458b7",
-            command=lambda: choose(["packet_loss", "jitter", "ping"]),
-        ).pack(fill="x", pady=(6, 0))
-
-        ctk.CTkButton(
-            panel,
-            text="Close",
-            width=100,
-            command=self._close_graph_selector,
-        ).pack(pady=(0, 18))
+        ctk.CTkButton(popup.content, text="Packet loss", command=lambda: choose(["packet_loss"]) ).pack(fill="x", pady=6)
+        ctk.CTkButton(popup.content, text="Jitter", command=lambda: choose(["jitter"]) ).pack(fill="x", pady=6)
+        ctk.CTkButton(popup.content, text="RTT", command=lambda: choose(["ping"]) ).pack(fill="x", pady=6)
+        ctk.CTkButton(popup.content, text="All three", fg_color="#2d6cdf", hover_color="#2458b7", command=lambda: choose(["packet_loss","jitter","ping"]) ).pack(fill="x", pady=(6,0))
 
     def update_amrs(self, amrs):
         self._clear_cards()
